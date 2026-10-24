@@ -3221,6 +3221,7 @@
     subtitleEl.hidden = name !== 'habits';
     document.getElementById('gymSubtitle').hidden = name !== 'gym';
     currentView = name;
+    if (name !== 'gym' && typeof gymState !== 'undefined') gymState.page = 'home';
     updateChrome();
     if (name === 'gym') renderGym();
     window.scrollTo(0, 0);
@@ -3230,6 +3231,68 @@
   document.querySelector('.tabbar').addEventListener('click', (e) => {
     const tab = e.target.closest('.tab');
     if (tab) setView(tab.dataset.view);
+  });
+
+  // ======================================================================
+  // 12a) Zurück-Geste des Handys
+  // ======================================================================
+  // Ohne Vorkehrung verlässt die Zurück-Geste sofort die App, weil die App technisch nur
+  // eine einzige Seite ist. Deshalb legen wir einen zusätzlichen "Puffer"-Eintrag in den
+  // Browserverlauf. Drückst du zurück, verbraucht das nur diesen Eintrag. Wir schließen dann
+  // die oberste Ebene (Fenster, Unterseite, Gym-Bereich) und legen den Puffer neu an.
+  // Erst auf dem Hauptbildschirm der Habits ohne offene Ebene verlässt "Zurück" die App.
+
+  const openDialogs = [];
+  const nativeShowModal = HTMLDialogElement.prototype.showModal;
+  HTMLDialogElement.prototype.showModal = function () {
+    nativeShowModal.call(this);
+    openDialogs.push(this);
+  };
+  // Das "close"-Ereignis steigt nicht auf, daher capture (true). Es kommt auch bei Esc und Schaltflächen.
+  document.addEventListener('close', (e) => {
+    const i = openDialogs.indexOf(e.target);
+    if (i >= 0) openDialogs.splice(i, 1);
+  }, true);
+
+  let bufferPushed = false;
+  function pushBuffer() {
+    try { history.pushState({ buffer: true }, ''); bufferPushed = true; } catch (e) { /* nicht kritisch */ }
+  }
+
+  // Browser werten Verlaufseinträge ohne vorherige Berührung als unwichtig und überspringen sie.
+  // Deshalb entsteht der Puffer erst bei der ersten Berührung.
+  ['pointerdown', 'keydown'].forEach(type => {
+    window.addEventListener(type, function once() {
+      window.removeEventListener(type, once, true);
+      if (!bufferPushed) pushBuffer();
+    }, true);
+  });
+
+  window.addEventListener('popstate', () => {
+    if (!bufferPushed) return;
+    // 1) offenes Fenster schließen (das zuletzt geöffnete zuerst)
+    while (openDialogs.length && !openDialogs[openDialogs.length - 1].open) openDialogs.pop();
+    if (openDialogs.length) {
+      openDialogs.pop().close();
+    }
+    // 2) Unterseiten im Gym-Bereich
+    else if (currentView === 'gym' && !active && gymState.page === 'exercise') {
+      gymState.page = 'exercises'; renderGym(); window.scrollTo(0, 0);
+    }
+    else if (currentView === 'gym' && !active && gymState.page === 'exercises') {
+      gymState.page = 'home'; renderGym(); window.scrollTo(0, 0);
+    }
+    // 3) vom Gym-Hauptbildschirm zu den Habits
+    else if (currentView === 'gym') {
+      setView('habits');
+    }
+    // 4) Habits-Hauptbildschirm: die App darf verlassen werden
+    else {
+      bufferPushed = false;
+      history.back();
+      return;
+    }
+    pushBuffer();
   });
 
   // ======================================================================
