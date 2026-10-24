@@ -1,7 +1,7 @@
 {
-  "name": "Wegmarken – Habit Tracker",
-  "short_name": "Wegmarken",
-  "description": "Verfolge deine täglichen Gewohnheiten und Serien.",
+  "name": "Maximize",
+  "short_name": "Maximize",
+  "description": "Mehr aus jedem Tag machen: Gewohnheiten, Training und mehr.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

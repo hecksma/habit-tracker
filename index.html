@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>Wegmarken – Habit Tracker</title>
+<title>Maximize</title>
 <!-- Farbe der Statusleiste auf dem Handy, passend zum Hintergrund -->
 <meta name="theme-color" content="#1C2B27" />
 <!-- Verweis auf die manifest.json: Sie sagt Android, wie die App heißt und aussieht, wenn sie installiert wird -->
@@ -283,7 +283,7 @@
 <body>
 
 <header>
-  <p class="eyebrow" id="todayLabel">Wegmarken</p>
+  <p class="eyebrow" id="todayLabel">Maximize</p>
   <h1>Deine Gewohnheiten</h1>
   <p class="subtitle" id="subtitle">Tippe den Kreis, wenn du eine Gewohnheit heute erledigt hast.</p>
 </header>
@@ -309,7 +309,10 @@
 
 <script>
   // Unter diesem Namen liegen deine Daten im Browser-Speicher (localStorage)
-  const STORAGE_KEY = 'wegmarken-habits';
+  const STORAGE_KEY = 'maximize-habits';
+  // Alter Speicherort aus der Zeit, als die App noch anders hieß.
+  // Wir lesen ihn weiter, damit bestehende Daten nicht verloren gehen.
+  const LEGACY_STORAGE_KEY = 'wegmarken-habits';
   let habits = [];
   let loaded = false;
 
@@ -355,7 +358,7 @@
   // try/catch fängt Fehler ab, damit die App nicht abstürzt, falls der Speicher nicht verfügbar ist.
   function loadHabits() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
       habits = raw ? JSON.parse(raw) : [];
     } catch (e) {
       habits = [];
@@ -467,7 +470,7 @@
   // über einen unsichtbaren Download-Link an den Browser übergeben.
   function exportData() {
     const payload = {
-      app: 'wegmarken',
+      app: 'maximize',
       version: 1,
       exportedAt: new Date().toISOString(),
       habits: habits
@@ -476,7 +479,7 @@
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'wegmarken-sicherung-' + todayStr() + '.json';
+    link.download = 'maximize-sicherung-' + todayStr() + '.json';
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -501,7 +504,8 @@
   async function importData(file) {
     try {
       const data = JSON.parse(await file.text());
-      if (!data || data.app !== 'wegmarken' || !Array.isArray(data.habits)) {
+      // 'wegmarken' akzeptieren wir weiter, damit ältere Sicherungen noch lesbar sind
+      if (!data || !['maximize', 'wegmarken'].includes(data.app) || !Array.isArray(data.habits)) {
         throw new Error('format');
       }
       const valid = data.habits.filter(isValidHabit);
@@ -526,7 +530,7 @@
       setStatus('Wiederhergestellt: ' + added + ' neu, ' + (valid.length - added) + ' zusammengeführt'
         + (skipped ? ', ' + skipped + ' übersprungen' : '') + '.', false);
     } catch (e) {
-      setStatus('Diese Datei ist keine gültige Sicherung von Wegmarken.', true);
+      setStatus('Diese Datei ist keine gültige Sicherung von Maximize.', true);
     }
   }
 
