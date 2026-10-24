@@ -3239,7 +3239,7 @@
   // Ohne Vorkehrung verlässt die Zurück-Geste sofort die App, weil die App technisch nur
   // eine einzige Seite ist. Deshalb legen wir einen zusätzlichen "Puffer"-Eintrag in den
   // Browserverlauf. Drückst du zurück, verbraucht das nur diesen Eintrag. Wir schließen dann
-  // die oberste Ebene (Fenster, Unterseite, Gym-Bereich) und legen den Puffer neu an.
+  // die oberste Ebene (Fenster, Unterseite, Gym-Bereich, Statistik).
   // Erst auf dem Hauptbildschirm der Habits ohne offene Ebene verlässt "Zurück" die App.
 
   const openDialogs = [];
@@ -3254,22 +3254,20 @@
     if (i >= 0) openDialogs.splice(i, 1);
   }, true);
 
-  let bufferPushed = false;
-  function pushBuffer() {
-    try { history.pushState({ buffer: true }, ''); bufferPushed = true; } catch (e) { /* nicht kritisch */ }
-  }
+  // Wie viele Puffer-Einträge liegen aktuell über dem Start-Eintrag?
+  let depth = 0;
+  const MAX_DEPTH = 4;
 
-  // Browser werten Verlaufseinträge ohne vorherige Berührung als unwichtig und überspringen sie.
-  // Deshalb entsteht der Puffer erst bei der ersten Berührung.
-  ['pointerdown', 'keydown'].forEach(type => {
-    window.addEventListener(type, function once() {
-      window.removeEventListener(type, once, true);
-      if (!bufferPushed) pushBuffer();
-    }, true);
-  });
+  // Browser überspringen Verlaufseinträge, die ohne Berührung entstanden sind. Deshalb legen wir
+  // die Puffer nur direkt bei einem Tipp an: bei jedem Tipp einer, bis es vier sind.
+  window.addEventListener('click', () => {
+    if (depth >= MAX_DEPTH) return;
+    try { history.pushState({ buffer: depth + 1 }, ''); depth++; } catch (e) { /* nicht kritisch */ }
+  }, true);
 
   window.addEventListener('popstate', () => {
-    if (!bufferPushed) return;
+    if (depth === 0) return;
+    depth--;
     // 1) offenes Fenster schließen (das zuletzt geöffnete zuerst)
     while (openDialogs.length && !openDialogs[openDialogs.length - 1].open) openDialogs.pop();
     if (openDialogs.length) {
@@ -3286,13 +3284,16 @@
     else if (currentView === 'gym') {
       setView('habits');
     }
-    // 4) Habits-Hauptbildschirm: die App darf verlassen werden
-    else {
-      bufferPushed = false;
-      history.back();
-      return;
+    // 4) Statistik der Habits zurück zu "Heute"
+    else if (currentView === 'habits' && habitsTab === 'stats') {
+      setHabitsTab('today');
     }
-    pushBuffer();
+    // 5) Habits-Hauptbildschirm: die App darf verlassen werden. Übrige Puffer überspringen.
+    else {
+      const n = depth + 1;
+      depth = 0;
+      history.go(-n);
+    }
   });
 
   // ======================================================================
