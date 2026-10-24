@@ -618,6 +618,96 @@
   .cal-day:disabled { cursor: default; opacity: 0.35; border-style: dashed; }
   .cal-day.off:disabled { border-style: none; }
 
+  /* ---- Gym: Routinen und Verlauf ---- */
+
+  .routine-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+
+  .routine-name { font-family: 'Fraunces', serif; font-size: 16px; margin: 0 0 2px; }
+
+  .routine-sub {
+    font-size: 12px;
+    color: var(--ink-dim);
+    line-height: 1.45;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .log-sub { display: block; font-size: 12px; color: var(--ink-dim); margin-top: 1px; }
+  .log-title { display: block; font-family: 'Fraunces', serif; font-size: 16px; }
+  .log-summary-text { flex: 1; min-width: 0; }
+  .log-ex { margin-top: 12px; }
+  .log-ex-name { font-size: 14px; font-weight: 500; }
+
+  .set-chips { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; }
+
+  .set-chip {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 3px 8px;
+    font-size: 12.5px;
+    color: var(--ink-dim);
+    white-space: nowrap;
+  }
+
+  .more-row { display: flex; justify-content: center; margin: 14px 0 6px; }
+
+  /* ---- Gym: laufendes Training ---- */
+
+  .action-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+  .wk-ex { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+  .wk-ex-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .wk-ex-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .icon-btn { background: none; border: none; color: var(--ink-dim); font-size: 16px; padding: 8px; cursor: pointer; border-radius: 8px; }
+
+  .set-head, .set-row { display: grid; grid-template-columns: 24px 1fr 62px 54px 44px; gap: 8px; align-items: center; }
+  .set-head { font-size: 11px; color: var(--ink-dim); margin-top: 8px; }
+  .set-head span:nth-child(3), .set-head span:nth-child(4) { text-align: center; }
+  .set-row { margin-top: 6px; }
+  .set-no { font-size: 13px; color: var(--ink-dim); text-align: center; }
+  .set-prev { font-size: 12.5px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .num-input {
+    width: 100%; min-width: 0; background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+    color: var(--ink); font-family: 'Inter', sans-serif; font-size: 16px; padding: 9px 4px; text-align: center;
+  }
+
+  .set-check { width: 44px; height: 40px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--ink-dim); font-size: 18px; cursor: pointer; padding: 0; }
+  .set-row.done .set-check { background: var(--amber); border-color: var(--amber); color: var(--bg); }
+  .set-row.done .num-input { border-color: rgba(232, 163, 61, 0.5); }
+
+  .end-row { display: flex; align-items: center; gap: 8px; margin: 18px 0 70px; }
+  .end-row .spacer { flex: 1; }
+
+  .rest-bar {
+    position: fixed; left: 0; right: 0; z-index: 5;
+    bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
+    max-width: 480px; margin: 0 auto; padding: 10px 16px;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg-elevated); border-top: 1px solid rgba(232, 163, 61, 0.5);
+  }
+  .rest-bar[hidden] { display: none; }
+  .rest-label { font-size: 12px; color: var(--ink-dim); }
+  .rest-time { font-family: 'Fraunces', serif; font-size: 26px; color: var(--amber); min-width: 3.4ch; line-height: 1.1; }
+  .rest-bar .spacer { flex: 1; }
+  .rest-bar .tool-btn { padding: 9px 13px; }
+
+  .ex-row {
+    display: flex; justify-content: space-between; gap: 10px; width: 100%; background: none; border: none;
+    border-bottom: 1px solid var(--border); color: var(--ink); padding: 11px 0; font-size: 14px; text-align: left; cursor: pointer;
+  }
+  .ex-row span:last-child { color: var(--ink-dim); font-size: 12.5px; white-space: nowrap; }
+  .pick-list { max-height: 42vh; overflow-y: auto; margin: 10px 0 14px; }
+
   /* ---- Untere Leiste zum Wechseln zwischen den Bereichen ---- */
 
   .tabbar {
@@ -846,6 +936,7 @@
     </button>
   </div>
   <p class="subtitle" id="subtitle">Lege unten deine erste Gewohnheit an.</p>
+  <p class="subtitle" id="gymSubtitle" hidden></p>
 </header>
 
 <!-- Jeder Bereich der App ist ein eigener Abschnitt. Es ist immer nur einer sichtbar. -->
@@ -864,10 +955,7 @@
 </section>
 
 <section id="view-gym" hidden>
-  <div class="empty-state">
-    <div class="big">Gym-Tracking</div>
-    Hier entstehen deine Trainingspläne, Übungen, Sätze und Gewichte. Dieser Bereich ist noch leer.
-  </div>
+  <div id="gymContent"></div>
 </section>
 
 <div class="add-bar">
@@ -878,6 +966,18 @@
 </div>
 
 <!-- Untere Leiste: Jeder Knopf schaltet einen Bereich um (data-view) -->
+<!-- Pausen-Anzeige: erscheint unten über der Leiste, solange im Gym-Bereich eine Pause läuft -->
+<div class="rest-bar" id="restBar" hidden>
+  <div>
+    <div class="rest-label" id="restLabel">Pause</div>
+    <div class="rest-time" id="restTime" aria-live="off">0:00</div>
+  </div>
+  <span class="spacer"></span>
+  <button type="button" class="tool-btn" data-rest="minus" aria-label="15 Sekunden weniger">−15</button>
+  <button type="button" class="tool-btn" data-rest="plus" aria-label="15 Sekunden mehr">+15</button>
+  <button type="button" class="tool-btn" data-rest="skip">Weiter</button>
+</div>
+
 <nav class="tabbar" aria-label="Bereiche">
   <button type="button" class="tab" data-view="habits" aria-current="page">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
@@ -940,10 +1040,48 @@
 <!-- Einstellungen: Änderungen gelten sofort, es gibt nichts zu speichern.
      Die zwei <details>-Bereiche klappen per Antippen auf. Mit dem gleichen name-Attribut
      ist immer nur einer offen. -->
+<!-- Übung anlegen oder bearbeiten -->
+<dialog id="exSheet" aria-labelledby="exTitle">
+  <form id="exForm">
+    <h2 id="exTitle" tabindex="-1" autofocus>Neue Übung</h2>
+    <div class="field">
+      <label for="exName">Name</label>
+      <input type="text" id="exName" class="text-input" maxlength="60" autocomplete="off" />
+    </div>
+    <div class="field">
+      <span class="label">Standard-Pause</span>
+      <div class="stepper">
+        <button type="button" id="exRestMinus" aria-label="Weniger">−</button>
+        <span class="value" id="exRestValue" aria-live="polite">1:30</span>
+        <button type="button" id="exRestPlus" aria-label="Mehr">+</button>
+        <span style="color: var(--ink-dim); font-size: 14px;">Min</span>
+      </div>
+    </div>
+    <p class="sheet-msg" id="exMsg" role="alert"></p>
+    <div class="sheet-actions">
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="exCancel">Abbrechen</button>
+      <button type="submit" class="btn primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Übung zum laufenden Training hinzufügen -->
+<dialog id="pickSheet" aria-labelledby="pickTitle">
+  <h2 id="pickTitle" tabindex="-1" autofocus>Übung hinzufügen</h2>
+  <input type="search" id="pickFilter" class="text-input" placeholder="Suchen" autocomplete="off" aria-label="Übung suchen" style="margin-top:0;" />
+  <div class="pick-list" id="pickList"></div>
+  <div class="sheet-actions">
+    <button type="button" class="btn" id="pickNew">Neue Übung</button>
+    <span class="spacer"></span>
+    <button type="button" class="btn" id="pickCancel">Abbrechen</button>
+  </div>
+</dialog>
+
 <dialog id="settings" aria-labelledby="settingsTitle">
   <h2 id="settingsTitle" tabindex="-1" autofocus>Einstellungen</h2>
 
-  <div class="setting setting-row">
+  <div class="setting setting-row" data-area="habits">
     <div>
       <span class="setting-title" id="weekSwitchLabel">Wochenansicht</span>
       <span class="setting-desc">Zeigt die sieben Tage unter jeder Gewohnheit. Aus: Die Karten werden kleiner, du kannst dann nur heute abhaken.</span>
@@ -951,7 +1089,7 @@
     <button type="button" role="switch" class="switch" id="weekSwitch" aria-checked="true" aria-labelledby="weekSwitchLabel"><span class="knob"></span></button>
   </div>
 
-  <details class="setting" id="orderDetails" name="settings-section">
+  <details class="setting" id="orderDetails" name="settings-section" data-area="habits">
     <summary>
       <span>
         <span class="setting-title">Reihenfolge ändern</span>
@@ -965,6 +1103,22 @@
     </div>
   </details>
 
+  <div class="setting setting-row" data-area="gym">
+    <div>
+      <span class="setting-title" id="soundSwitchLabel">Ton nach der Pause</span>
+      <span class="setting-desc">Ein kurzer Signalton, sobald die Pause vorbei ist. Mit Kopfhörern kommt er nur dort an.</span>
+    </div>
+    <button type="button" role="switch" class="switch" id="soundSwitch" aria-checked="true" aria-labelledby="soundSwitchLabel"><span class="knob"></span></button>
+  </div>
+
+  <div class="setting setting-row" data-area="gym">
+    <div>
+      <span class="setting-title" id="vibSwitchLabel">Vibration nach der Pause</span>
+      <span class="setting-desc">Das Handy vibriert einmal kurz, sobald die Pause vorbei ist.</span>
+    </div>
+    <button type="button" role="switch" class="switch" id="vibSwitch" aria-checked="true" aria-labelledby="vibSwitchLabel"><span class="knob"></span></button>
+  </div>
+
   <details class="setting" id="backupDetails" name="settings-section">
     <summary>
       <span>
@@ -974,13 +1128,31 @@
       <span class="chevron" aria-hidden="true"></span>
     </summary>
     <div class="setting-body">
-      <p class="setting-desc">Beim Wiederherstellen wird nichts überschrieben oder gelöscht. Die Daten aus der Datei werden mit deinen vorhandenen zusammengeführt.</p>
+      <p class="setting-desc">Sichert Gewohnheiten und Gym-Daten in einer Datei. Beim Wiederherstellen wird nichts überschrieben oder gelöscht, die Daten werden mit den vorhandenen zusammengeführt.</p>
       <div class="tool-row">
         <button type="button" class="tool-btn" id="exportBtn">Daten sichern</button>
         <button type="button" class="tool-btn" id="importBtn">Daten wiederherstellen</button>
       </div>
       <input type="file" id="importFile" accept=".json,application/json" hidden />
       <p class="status" id="status" role="status" aria-live="polite"></p>
+    </div>
+  </details>
+
+  <details class="setting" id="csvDetails" name="settings-section" data-area="gym">
+    <summary>
+      <span>
+        <span class="setting-title">Trainingsdaten importieren</span>
+        <span class="setting-desc">Verlauf aus einer CSV-Datei übernehmen</span>
+      </span>
+      <span class="chevron" aria-hidden="true"></span>
+    </summary>
+    <div class="setting-body">
+      <p class="setting-desc">Wähle eine CSV-Datei mit deinem bisherigen Trainingsverlauf (Spalten wie bei den Exporten gängiger Trainings-Apps). Die Datei bleibt auf deinem Gerät. Bereits vorhandene Trainings werden übersprungen, du kannst also gefahrlos mehrmals importieren.</p>
+      <div class="tool-row">
+        <button type="button" class="tool-btn" id="csvBtn">CSV-Datei wählen</button>
+      </div>
+      <input type="file" id="csvFile" accept=".csv,text/csv,text/plain" hidden />
+      <p class="status" id="csvStatus" role="status" aria-live="polite"></p>
     </div>
   </details>
 
@@ -1409,13 +1581,15 @@
 
   // Einstellungen liegen getrennt von den Gewohnheiten im Speicher.
   const SETTINGS_KEY = 'maximize-settings';
-  let settings = { showWeek: true };
+  let settings = { showWeek: true, sound: true, vibrate: true };
 
   function loadSettings() {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
       const parsed = raw ? JSON.parse(raw) : {};
       if (parsed && typeof parsed.showWeek === 'boolean') settings.showWeek = parsed.showWeek;
+      if (parsed && typeof parsed.sound === 'boolean') settings.sound = parsed.sound;
+      if (parsed && typeof parsed.vibrate === 'boolean') settings.vibrate = parsed.vibrate;
     } catch (e) { /* Standardwerte bleiben */ }
   }
 
@@ -1448,12 +1622,17 @@
 
   function renderSettings() {
     weekSwitch.setAttribute('aria-checked', String(settings.showWeek));
+    document.getElementById('soundSwitch').setAttribute('aria-checked', String(settings.sound));
+    document.getElementById('vibSwitch').setAttribute('aria-checked', String(settings.vibrate));
     renderOrderList();
   }
 
   document.getElementById('settingsBtn').addEventListener('click', () => {
     settingsEl.querySelectorAll('details').forEach(d => { d.open = false; });
     document.getElementById('status').textContent = '';
+    document.getElementById('csvStatus').textContent = '';
+    // Zeilen mit data-area gehören nur zu einem Bereich (Habits oder Gym) und erscheinen nur dort
+    settingsEl.querySelectorAll('[data-area]').forEach(el => { el.hidden = el.dataset.area !== currentView; });
     renderSettings();
     settingsEl.showModal();
     document.getElementById('settingsTitle').focus({ preventScroll: true });
@@ -1461,6 +1640,19 @@
 
   document.getElementById('settingsDone').addEventListener('click', () => settingsEl.close());
   settingsEl.addEventListener('click', (e) => { if (e.target === settingsEl) settingsEl.close(); });
+
+  // Die beiden Schalter für Ton und Vibration im Gym-Bereich
+  [['soundSwitch', 'sound'], ['vibSwitch', 'vibrate']].forEach(([id, key]) => {
+    const sw = document.getElementById(id);
+    sw.addEventListener('click', () => {
+      settings[key] = !settings[key];
+      sw.setAttribute('aria-checked', String(settings[key]));
+      saveSettings();
+      // Ein Klick ist eine Nutzeraktion: So darf die Seite danach Ton abspielen und vibrieren
+      if (settings[key] && key === 'sound') { prepareAudio(); beep(); }
+      if (settings[key] && key === 'vibrate' && navigator.vibrate) navigator.vibrate(120);
+    });
+  });
 
   weekSwitch.addEventListener('click', () => {
     settings.showWeek = !settings.showWeek;
@@ -1571,6 +1763,7 @@
   // Die Eingabeleiste unten gibt es nur im Habit-Bereich und nur in der Tagesliste.
   function updateChrome() {
     document.querySelector('.add-bar').hidden = !(currentView === 'habits' && habitsTab === 'today');
+    if (typeof updateRestBar === 'function') updateRestBar();
   }
 
   function setHabitsTab(tab) {
@@ -1847,7 +2040,773 @@
   }, true);
 
   // ======================================================================
-  // 9) Datensicherung
+  // 9) Gym: Daten, Speicher und Import
+  // ======================================================================
+  //
+  // So sind die Gym-Daten aufgebaut (wie drei verknüpfte Tabellen):
+  //   exercises: Übungen,  { id, name, rest }                       rest = Standard-Pause in Sekunden
+  //   routines:  Routinen, { id, name, items: [{ exerciseId, sets }] }
+  //   workouts:  Trainings, { id, date, name, routineId, durationSec,
+  //                           entries: [{ exerciseId, sets: [{ kg, reps, sec, dist }] }] }
+  // Trainings verweisen mit der exerciseId auf eine Übung. Benennst du eine Übung um,
+  // ändert sich der Name deshalb automatisch in der ganzen Historie. Gewichte sind immer kg.
+  // Alles liegt unter einem eigenen Schlüssel im Browser-Speicher, getrennt von den Habits.
+
+  const GYM_KEY = 'maximize-gym';
+  let gym = { exercises: [], routines: [], workouts: [] };
+  const gymState = { shown: 20 };
+
+  const ID_RE = /^[a-z0-9]{1,40}$/i;
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+
+  function numOrNull(v, min, max) {
+    return (typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max) ? v : null;
+  }
+
+  // Alles, was von außen kommt (Sicherungsdatei, Speicher, CSV-Import), läuft hier durch.
+  // Es wird geprüft und bereinigt: falsche Typen, unmögliche Zahlen und Verweise ins Leere fliegen raus.
+  function sanitizeGym(g) {
+    const out = { exercises: [], routines: [], workouts: [] };
+    if (!g || typeof g !== 'object') return out;
+    const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+
+    const exIds = new Set();
+    (Array.isArray(g.exercises) ? g.exercises : []).slice(0, 2000).forEach(e => {
+      if (!e || typeof e.id !== 'string' || !ID_RE.test(e.id) || exIds.has(e.id)) return;
+      const name = str(e.name, 60);
+      if (!name) return;
+      exIds.add(e.id);
+      const rest = numOrNull(e.rest, 10, 900);
+      out.exercises.push({ id: e.id, name, rest: rest === null ? null : Math.round(rest) });
+    });
+
+    const rIds = new Set();
+    (Array.isArray(g.routines) ? g.routines : []).slice(0, 200).forEach(r => {
+      if (!r || typeof r.id !== 'string' || !ID_RE.test(r.id) || rIds.has(r.id)) return;
+      const name = str(r.name, 40);
+      if (!name) return;
+      const items = (Array.isArray(r.items) ? r.items : []).slice(0, 60)
+        .filter(it => it && exIds.has(it.exerciseId))
+        .map(it => ({ exerciseId: it.exerciseId, sets: Math.round(numOrNull(it.sets, 1, 20) || 3) }));
+      rIds.add(r.id);
+      out.routines.push({ id: r.id, name, items });
+    });
+
+    const wIds = new Set();
+    (Array.isArray(g.workouts) ? g.workouts : []).slice(0, 20000).forEach(w => {
+      if (!w || typeof w.id !== 'string' || !ID_RE.test(w.id) || wIds.has(w.id)) return;
+      if (typeof w.date !== 'string' || !DATE_RE.test(w.date)) return;
+      const entries = [];
+      (Array.isArray(w.entries) ? w.entries : []).slice(0, 60).forEach(en => {
+        if (!en || !exIds.has(en.exerciseId)) return;
+        const sets = (Array.isArray(en.sets) ? en.sets : []).slice(0, 60).map(st => ({
+          kg: numOrNull(st && st.kg, 0, 1000),
+          reps: numOrNull(st && st.reps, 0, 1000),
+          sec: numOrNull(st && st.sec, 0, 86400),
+          dist: numOrNull(st && st.dist, 0, 1000000)
+        })).filter(st => st.kg !== null || st.reps !== null || st.sec !== null || st.dist !== null);
+        if (sets.length) entries.push({ exerciseId: en.exerciseId, sets });
+      });
+      if (!entries.length) return;
+      wIds.add(w.id);
+      const dur = numOrNull(w.durationSec, 0, 86400);
+      out.workouts.push({
+        id: w.id, date: w.date, name: str(w.name, 60) || 'Training',
+        routineId: (typeof w.routineId === 'string' && ID_RE.test(w.routineId)) ? w.routineId : null,
+        durationSec: dur === null ? null : Math.round(dur), entries
+      });
+    });
+    return out;
+  }
+
+  // Führt neue Gym-Daten mit den vorhandenen zusammen. Es wird nichts überschrieben:
+  // Was es (per ID) schon gibt, bleibt unverändert. Nur eine fehlende Standard-Pause wird ergänzt.
+  function mergeGym(incoming) {
+    const res = { exercises: 0, routines: 0, workouts: 0, skipped: 0 };
+    const exById = new Map(gym.exercises.map(e => [e.id, e]));
+    incoming.exercises.forEach(e => {
+      const ex = exById.get(e.id);
+      if (ex) { if (ex.rest === null && e.rest !== null) ex.rest = e.rest; }
+      else { gym.exercises.push(e); exById.set(e.id, e); res.exercises++; }
+    });
+    const rIds = new Set(gym.routines.map(r => r.id));
+    incoming.routines.forEach(r => { if (!rIds.has(r.id)) { gym.routines.push(r); rIds.add(r.id); res.routines++; } });
+    const wIds = new Set(gym.workouts.map(w => w.id));
+    incoming.workouts.forEach(w => {
+      if (wIds.has(w.id)) { res.skipped++; return; }
+      gym.workouts.push(w); wIds.add(w.id); res.workouts++;
+    });
+    gym.workouts.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    return res;
+  }
+
+  function loadGym() {
+    try {
+      const raw = localStorage.getItem(GYM_KEY);
+      gym = sanitizeGym(raw ? JSON.parse(raw) : null);
+    } catch (e) {
+      gym = { exercises: [], routines: [], workouts: [] };
+    }
+  }
+
+  function saveGym() {
+    try { localStorage.setItem(GYM_KEY, JSON.stringify(gym)); return true; }
+    catch (e) { return false; }
+  }
+
+  // Eine feste Zeichenfolge aus einem Text machen (Hash). So bekommt dieselbe Übung bei jedem
+  // Import dieselbe ID, und ein zweiter Import erzeugt keine Dubletten.
+  function hashStr(str) {
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for (let i = 0; i < str.length; i++) {
+      const ch = str.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+  }
+
+  // Liest CSV-Text in eine Tabelle. Trennzeichen ist hier ";", Felder stehen in "...".
+  // Ein "" innerhalb eines Feldes bedeutet ein einzelnes Anführungszeichen.
+  function parseCsv(text, delim) {
+    const rows = [];
+    let row = [], field = '', inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQuotes = false; }
+        else field += c;
+      } else if (c === '"') inQuotes = true;
+      else if (c === delim) { row.push(field); field = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[i + 1] === '\n') i++;
+        row.push(field); field = '';
+        if (row.length > 1 || row[0] !== '') rows.push(row);
+        row = [];
+      } else field += c;
+    }
+    if (field !== '' || row.length) { row.push(field); rows.push(row); }
+    return rows;
+  }
+
+  // Routinen, die beim CSV-Import angelegt werden: Name in der Datei (klein) -> Name bei uns.
+  // Alle anderen Trainings landen nur im Verlauf.
+  const CSV_ROUTINES = { 'ub 1': 'Upper Body', 'leg day': 'Lower Body' };
+
+  function buildFromCsv(text) {
+    const table = parseCsv(text.replace(/^﻿/, ''), ';');
+    if (table.length < 2) throw new Error('leer');
+    const head = table[0].map(h => h.trim());
+    const col = n => head.indexOf(n);
+    const C = { no: col('Workout #'), date: col('Date'), wname: col('Workout Name'), dur: col('Duration (sec)'),
+      ex: col('Exercise Name'), set: col('Set Order'), kg: col('Weight (kg)'), reps: col('Reps'),
+      dist: col('Distance (meters)'), sec: col('Seconds') };
+    if ([C.no, C.date, C.wname, C.ex, C.set, C.kg, C.reps].some(i => i < 0)) throw new Error('spalten');
+
+    const exByName = new Map();   // Name (klein) -> Übung
+    const restLatest = new Map(); // Übungs-ID -> { date, rest }
+    const workouts = [];
+    const byNo = new Map();
+    const num = v => { const n = parseFloat(String(v).replace(',', '.')); return Number.isFinite(n) ? n : null; };
+
+    const exFor = (rawName) => {
+      const name = rawName.trim();
+      const key = name.toLowerCase();
+      if (!exByName.has(key)) exByName.set(key, { id: 'e' + hashStr(key), name, rest: null });
+      return exByName.get(key);
+    };
+
+    for (let i = 1; i < table.length; i++) {
+      const r = table[i];
+      const no = (r[C.no] || '').trim();
+      if (!no || !(r[C.ex] || '').trim()) continue;
+      const date = (r[C.date] || '').trim().replace(' ', 'T').slice(0, 16);
+      let w = byNo.get(no);
+      if (!w) {
+        w = { id: 'wstrong' + no.replace(/[^a-z0-9]/gi, ''), date, name: (r[C.wname] || '').trim(),
+          routineId: null, durationSec: num(r[C.dur]), entries: [], _byEx: new Map() };
+        byNo.set(no, w); workouts.push(w);
+      }
+      const ex = exFor(r[C.ex]);
+      const setOrder = (r[C.set] || '').trim();
+      if (setOrder === 'Rest Timer') {
+        const rest = num(r[C.sec]);
+        if (rest !== null && rest >= 10) {
+          const cur = restLatest.get(ex.id);
+          if (!cur || date >= cur.date) restLatest.set(ex.id, { date, rest: Math.round(rest) });
+        }
+        continue;
+      }
+      let entry = w._byEx.get(ex.id);
+      if (!entry) { entry = { exerciseId: ex.id, sets: [] }; w._byEx.set(ex.id, entry); w.entries.push(entry); }
+      entry.sets.push({ kg: num(r[C.kg]), reps: num(r[C.reps]), sec: C.sec >= 0 ? num(r[C.sec]) : null, dist: C.dist >= 0 ? num(r[C.dist]) : null });
+    }
+
+    const exercises = Array.from(exByName.values());
+    exercises.forEach(e => { const r = restLatest.get(e.id); if (r) e.rest = r.rest; });
+
+    // Routinen aus dem jeweils letzten Training mit diesem Namen
+    const routines = [];
+    Object.keys(CSV_ROUTINES).forEach(key => {
+      const matching = workouts.filter(w => w.name.toLowerCase() === key).sort((a, b) => (a.date < b.date ? 1 : -1));
+      if (!matching.length) return;
+      const name = CSV_ROUTINES[key];
+      const id = 'r' + hashStr(name.toLowerCase());
+      routines.push({ id, name, items: matching[0].entries.map(en => ({ exerciseId: en.exerciseId, sets: en.sets.length })) });
+      matching.forEach(w => { w.routineId = id; w.name = name; });
+    });
+
+    workouts.forEach(w => { delete w._byEx; });
+    return sanitizeGym({ exercises, routines, workouts });
+  }
+
+  async function importCsv(file) {
+    const status = document.getElementById('csvStatus');
+    const say = (t, err) => { status.textContent = t; status.className = 'status' + (err ? ' error' : ''); };
+    if (file.size > 15 * 1024 * 1024) { say('Die Datei ist zu groß für den Import.', true); return; }
+    try {
+      const clean = buildFromCsv(await file.text());
+      if (clean.workouts.length === 0) throw new Error('keine Trainings');
+      const before = JSON.stringify(gym);
+      const res = mergeGym(clean);
+      if (!saveGym()) {
+        gym = JSON.parse(before);
+        say('Der Speicher ist voll. Importiert wurde nichts.', true);
+        return;
+      }
+      renderGym();
+      say('Importiert: ' + res.workouts + ' Trainings, ' + res.exercises + ' Übungen, ' + res.routines + ' Routinen'
+        + (res.skipped ? ' (' + res.skipped + ' Trainings schon vorhanden)' : '') + '.', false);
+    } catch (e) {
+      say('Diese Datei konnte nicht gelesen werden. Erwartet wird eine CSV mit Trainingsdaten.', true);
+    }
+  }
+
+  document.getElementById('csvBtn').addEventListener('click', () => document.getElementById('csvFile').click());
+  document.getElementById('csvFile').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) importCsv(file);
+    e.target.value = '';
+  });
+
+  // ======================================================================
+  // 10) Gym: Anzeige
+  // ======================================================================
+
+  const nf = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 });
+
+  function setText(set) {
+    const parts = [];
+    if (set.kg !== null && set.reps !== null) parts.push(nf.format(set.kg) + ' kg × ' + set.reps);
+    else if (set.reps !== null) parts.push(set.reps + ' Wdh.');
+    else if (set.kg !== null) parts.push(nf.format(set.kg) + ' kg');
+    if (set.sec !== null && set.sec > 0) parts.push(Math.round(set.sec / 60) + ' Min');
+    if (set.dist !== null && set.dist > 0) parts.push(nf.format(set.dist / 1000) + ' km');
+    return parts.join(', ') || '–';
+  }
+
+  function workoutDateText(w) {
+    const d = parseDate(w.date.slice(0, 10));
+    return d.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function renderWorkout(w, names) {
+    const mins = w.durationSec ? Math.round(w.durationSec / 60) + ' Min, ' : '';
+    return '<details class="stat-habit">'
+      + '<summary><span class="log-summary-text"><span class="log-title">' + escapeHtml(w.name) + '</span>'
+      + '<span class="log-sub">' + workoutDateText(w) + ', ' + mins + w.entries.length + ' Übungen</span></span>'
+      + '<span class="chevron" aria-hidden="true"></span></summary>'
+      + '<div class="sh-body">' + w.entries.map(en =>
+          '<div class="log-ex"><div class="log-ex-name">' + escapeHtml(names.get(en.exerciseId) || 'Übung') + '</div>'
+          + '<div class="set-chips">' + en.sets.map(st => '<span class="set-chip">' + setText(st) + '</span>').join('') + '</div></div>'
+        ).join('') + '</div></details>';
+  }
+
+  // --- Hilfen für Übungen und Zahlen ---
+
+  const exById = id => gym.exercises.find(e => e.id === id);
+  const numText = n => String(n).replace('.', ',');           // 47.5 -> "47,5"
+  const parseNum = v => { const n = parseFloat(String(v).replace(',', '.')); return Number.isFinite(n) ? n : null; };
+  const clock = ms => {                                       // 83000 -> "1:23", ab einer Stunde "1:02:03"
+    const t = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), sec = t % 60;
+    return (h ? h + ':' + pad(m) : m) + ':' + pad(sec);
+  };
+
+  // Die Sätze, die du bei dieser Übung zuletzt gemacht hast (leer, wenn es noch keine gibt)
+  function lastSets(exId) {
+    for (let i = gym.workouts.length - 1; i >= 0; i--) {
+      const en = gym.workouts[i].entries.find(x => x.exerciseId === exId);
+      if (en) return en.sets;
+    }
+    return [];
+  }
+
+  function renderGym() {
+    const el = document.getElementById('gymContent');
+    if (active) { renderActive(el); updateActiveSubtitle(); updateRestBar(); return; }
+    const sub = document.getElementById('gymSubtitle');
+    const names = new Map(gym.exercises.map(e => [e.id, e.name]));
+    const sorted = gym.workouts.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+    if (sorted.length) {
+      const first = parseDate(sorted[sorted.length - 1].date.slice(0, 10));
+      sub.textContent = sorted.length + ' Trainings seit ' + first.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+    } else {
+      sub.textContent = 'Noch keine Trainings.';
+    }
+
+    let html = '';
+    if (!gym.workouts.length && !gym.routines.length && !gym.exercises.length) {
+      html += '<div class="empty-state" style="padding:28px 10px 8px;"><div class="big">Noch keine Trainingsdaten</div>'
+        + 'Du kannst direkt ein leeres Training starten oder deinen bisherigen Verlauf aus einer CSV-Datei übernehmen.'
+        + '<div class="more-row"><button type="button" class="btn" data-act="import">Trainingsdaten importieren</button></div></div>';
+    }
+    if (gym.routines.length) {
+      html += '<div class="stats-title" style="margin-top:20px;">Routinen</div>' + gym.routines.map(r =>
+        '<div class="routine-card"><p class="routine-name">' + escapeHtml(r.name) + '</p>'
+        + '<p class="routine-sub">' + r.items.length + ' Übungen: ' + escapeHtml(r.items.map(it => names.get(it.exerciseId) || 'Übung').join(', ')) + '</p>'
+        + '<div class="wk-ex-actions"><button type="button" class="btn primary" data-act="start" data-id="' + r.id + '">Starten</button></div></div>'
+      ).join('');
+    }
+    html += '<div class="action-row"><button type="button" class="tool-btn" data-act="start-empty">Leeres Training</button>'
+      + '<button type="button" class="tool-btn" data-act="new-ex">Neue Übung</button></div>';
+
+    if (gym.exercises.length) {
+      const list = gym.exercises.slice().sort((a, b) => a.name.localeCompare(b.name, 'de'));
+      html += '<details class="stat-habit" id="exDetails"' + (gymState.exOpen ? ' open' : '') + '>'
+        + '<summary><span class="log-summary-text"><span class="log-title">Übungen</span>'
+        + '<span class="log-sub">' + list.length + ' Übungen, antippen zum Bearbeiten</span></span>'
+        + '<span class="chevron" aria-hidden="true"></span></summary><div class="sh-body">'
+        + list.map(e => '<button type="button" class="ex-row" data-act="edit-ex" data-id="' + e.id + '"><span>' + escapeHtml(e.name)
+          + '</span><span>' + (e.rest ? clock(e.rest * 1000) + ' Pause' : 'Pause offen') + '</span></button>').join('')
+        + '</div></details>';
+    }
+    if (sorted.length) {
+      html += '<div class="stats-title">Verlauf</div>' + sorted.slice(0, gymState.shown).map(w => renderWorkout(w, names)).join('');
+      if (sorted.length > gymState.shown) {
+        html += '<div class="more-row"><button type="button" class="tool-btn" data-act="more">Mehr anzeigen (' + (sorted.length - gymState.shown) + ' weitere)</button></div>';
+      }
+    }
+    el.innerHTML = html;
+  }
+
+  // ======================================================================
+  // 10b) Gym: laufendes Training
+  // ======================================================================
+  //
+  // Das laufende Training liegt in einem eigenen Speicherplatz und wird nach jeder Änderung
+  // gesichert. Schließt du die App mitten im Training, geht es danach genau da weiter.
+  // Erst "Training beenden" macht daraus einen Eintrag im Verlauf.
+  //   active = { name, routineId, start, restEnd, restTotal,
+  //              entries: [{ exerciseId, sets: [{ kg, reps, done }] }] }
+  // kg und reps bleiben als Text, so wie du sie tippst. Umgerechnet wird erst beim Beenden.
+
+  const ACTIVE_KEY = 'maximize-gym-active';
+  let active = null;
+  let restAlerted = true;
+  let armed = null;          // Zwei-Schritt-Bestätigung ("Wirklich verwerfen?")
+  let ticker = null;
+  let audioCtx = null;
+  let wakeLock = null;
+
+  function sanitizeActive(a) {
+    if (!a || typeof a !== 'object') return null;
+    const start = numOrNull(a.start, 0, 4e12);
+    if (start === null) return null;
+    const txt = v => (typeof v === 'string' ? v.slice(0, 8) : '');
+    const entries = (Array.isArray(a.entries) ? a.entries : []).slice(0, 60)
+      .filter(en => en && exById(en.exerciseId))
+      .map(en => ({ exerciseId: en.exerciseId, sets: (Array.isArray(en.sets) ? en.sets : []).slice(0, 60)
+        .map(st => ({ kg: txt(st && st.kg), reps: txt(st && st.reps), done: !!(st && st.done === true) })) }));
+    return {
+      name: (typeof a.name === 'string' && a.name.trim()) ? a.name.trim().slice(0, 60) : 'Training',
+      routineId: (typeof a.routineId === 'string' && ID_RE.test(a.routineId)) ? a.routineId : null,
+      start, entries,
+      restEnd: numOrNull(a.restEnd, 0, 4e12),
+      restTotal: numOrNull(a.restTotal, 0, 3600)
+    };
+  }
+
+  function loadActive() {
+    try {
+      const raw = localStorage.getItem(ACTIVE_KEY);
+      active = raw ? sanitizeActive(JSON.parse(raw)) : null;
+    } catch (e) { active = null; }
+    if (active) {
+      restAlerted = !active.restEnd || active.restEnd <= Date.now();
+      holdScreen();
+      ensureTicker();
+    }
+  }
+
+  function saveActive() {
+    try {
+      if (active) localStorage.setItem(ACTIVE_KEY, JSON.stringify(active));
+      else localStorage.removeItem(ACTIVE_KEY);
+    } catch (e) { /* nicht kritisch */ }
+  }
+
+  // Ein Eintrag für eine Übung, vorausgefüllt mit den Werten vom letzten Mal
+  function makeEntry(exId, count) {
+    const last = lastSets(exId);
+    const n = count || last.length || 3;
+    const sets = [];
+    for (let i = 0; i < n; i++) {
+      const base = last[i] || last[last.length - 1] || null;
+      sets.push({
+        kg: base && base.kg !== null ? numText(base.kg) : '',
+        reps: base && base.reps !== null ? String(base.reps) : '',
+        done: false
+      });
+    }
+    return { exerciseId: exId, sets };
+  }
+
+  function startWorkout(routine) {
+    active = {
+      name: routine ? routine.name : 'Training',
+      routineId: routine ? routine.id : null,
+      start: Date.now(), restEnd: null, restTotal: null,
+      entries: routine ? routine.items.filter(it => exById(it.exerciseId)).map(it => makeEntry(it.exerciseId, it.sets)) : []
+    };
+    saveActive();
+    prepareAudio();
+    holdScreen();
+    ensureTicker();
+    renderGym();
+    window.scrollTo(0, 0);
+  }
+
+  function renderActive(el) {
+    document.getElementById('gymSubtitle').hidden = currentView !== 'gym';
+    let html = '<div class="stats-title" style="margin-top:20px;">' + escapeHtml(active.name) + '</div>';
+    active.entries.forEach((en, i) => {
+      const ex = exById(en.exerciseId);
+      const last = lastSets(en.exerciseId);
+      html += '<div class="wk-ex"><div class="wk-ex-head"><span class="log-ex-name">' + escapeHtml(ex ? ex.name : 'Übung') + '</span>'
+        + '<button type="button" class="icon-btn" data-act="rm-ex" data-ex="' + i + '" aria-label="Übung entfernen">✕</button></div>'
+        + '<div class="set-head"><span>Satz</span><span>Letztes Mal</span><span>kg</span><span>Wdh.</span><span></span></div>';
+      en.sets.forEach((st, j) => {
+        const prev = last[j] || last[last.length - 1];
+        const prevTxt = prev ? ((prev.kg !== null && prev.reps !== null) ? numText(prev.kg) + ' × ' + prev.reps : setText(prev)) : '–';
+        html += '<div class="set-row' + (st.done ? ' done' : '') + '"><span class="set-no">' + (j + 1) + '</span>'
+          + '<span class="set-prev">' + prevTxt + '</span>'
+          + '<input class="num-input" inputmode="decimal" data-f="kg" data-ex="' + i + '" data-set="' + j + '" value="' + escapeHtml(st.kg) + '" aria-label="Gewicht in kg, Satz ' + (j + 1) + '" />'
+          + '<input class="num-input" inputmode="numeric" data-f="reps" data-ex="' + i + '" data-set="' + j + '" value="' + escapeHtml(st.reps) + '" aria-label="Wiederholungen, Satz ' + (j + 1) + '" />'
+          + '<button type="button" class="set-check" data-act="toggle-set" data-ex="' + i + '" data-set="' + j + '" aria-pressed="' + st.done + '" aria-label="Satz ' + (j + 1) + ' abgeschlossen">✓</button></div>';
+      });
+      html += '<div class="wk-ex-actions"><button type="button" class="tool-btn" data-act="add-set" data-ex="' + i + '">+ Satz</button>'
+        + '<button type="button" class="tool-btn" data-act="del-set" data-ex="' + i + '"' + (en.sets.length < 2 ? ' disabled' : '') + '>− Satz</button></div></div>';
+    });
+    html += '<div class="action-row"><button type="button" class="tool-btn" data-act="add-ex">+ Übung hinzufügen</button></div>'
+      + '<div class="end-row"><button type="button" class="btn danger" data-act="discard">Verwerfen</button><span class="spacer"></span>'
+      + '<button type="button" class="btn primary" data-act="finish">Training beenden</button></div>';
+    el.innerHTML = html;
+  }
+
+  function updateActiveSubtitle() {
+    if (!active) return;
+    let done = 0, total = 0;
+    active.entries.forEach(en => en.sets.forEach(st => { total++; if (st.done) done++; }));
+    document.getElementById('gymSubtitle').textContent = clock(Date.now() - active.start) + ' · ' + done + ' von ' + total + ' Sätzen';
+  }
+
+  // ---- Pause ----
+
+  function startRest(sec) {
+    active.restTotal = sec;
+    active.restEnd = Date.now() + sec * 1000;
+    restAlerted = false;
+  }
+
+  function updateRestBar() {
+    const bar = document.getElementById('restBar');
+    const show = !!(active && active.restEnd && currentView === 'gym');
+    bar.hidden = !show;
+    if (!show) return;
+    const left = active.restEnd - Date.now();
+    document.getElementById('restTime').textContent = clock(Math.ceil(left / 1000) * 1000);
+    document.getElementById('restLabel').textContent = left > 0 ? 'Pause' : 'Pause vorbei';
+  }
+
+  // Der Takt: alle 250 ms Anzeige auffrischen und prüfen, ob die Pause um ist.
+  // Wir rechnen mit dem Endzeitpunkt, nicht mit mitgezählten Sekunden. So stimmt die Zeit
+  // auch dann, wenn der Browser den Takt zwischendurch drosselt.
+  function tick() {
+    if (!active) { clearInterval(ticker); ticker = null; updateRestBar(); return; }
+    const now = Date.now();
+    if (active.restEnd) {
+      if (now >= active.restEnd && !restAlerted) {
+        restAlerted = true;
+        // Nur melden, wenn die Pause gerade erst zu Ende ging, nicht lange nachträglich
+        if (now - active.restEnd < 8000) alertRestOver();
+      }
+      if (now > active.restEnd + 6000) { active.restEnd = null; saveActive(); }
+    }
+    updateRestBar();
+    updateActiveSubtitle();
+  }
+
+  function ensureTicker() { if (!ticker) ticker = setInterval(tick, 250); }
+
+  // ---- Ton und Vibration (nur am Ende der Pause) ----
+
+  // Ein AudioContext darf erst nach einer Berührung Ton machen. Deshalb wird er beim ersten
+  // Tippen (Training starten, Satz abhaken) vorbereitet und ruht danach, bis die Pause endet.
+  function prepareAudio() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!audioCtx) audioCtx = new AC();
+      audioCtx.resume().then(() => audioCtx.suspend()).catch(() => {});
+    } catch (e) { /* ohne Ton geht es auch */ }
+  }
+
+  function beep() {
+    if (!audioCtx) return;
+    try {
+      audioCtx.resume().then(() => {
+        const t0 = audioCtx.currentTime;
+        [0, 0.26, 0.52].forEach((d, i) => {
+          const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = i === 2 ? 1175 : 880;
+          gain.gain.setValueAtTime(0.0001, t0 + d);
+          gain.gain.exponentialRampToValueAtTime(0.5, t0 + d + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.2);
+          osc.connect(gain).connect(audioCtx.destination);
+          osc.start(t0 + d);
+          osc.stop(t0 + d + 0.22);
+        });
+        // Danach wieder ruhen lassen, damit Musik und andere Apps nicht gestört werden
+        setTimeout(() => { try { audioCtx.suspend(); } catch (e) { /* egal */ } }, 1100);
+      }).catch(() => {});
+    } catch (e) { /* ohne Ton geht es auch */ }
+  }
+
+  function alertRestOver() {
+    if (settings.sound) beep();
+    if (settings.vibrate && navigator.vibrate) { try { navigator.vibrate([250, 120, 250]); } catch (e) { /* egal */ } }
+  }
+
+  // ---- Bildschirm anlassen ----
+
+  async function holdScreen() {
+    if (!active || wakeLock || !navigator.wakeLock) return;
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch (e) { wakeLock = null; }
+  }
+
+  function releaseScreen() {
+    if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && active) { holdScreen(); tick(); }
+  });
+
+  // ---- Training beenden / verwerfen ----
+
+  // Der erste Tipp ändert nur die Beschriftung, erst der zweite führt die Aktion aus.
+  function confirmTap(key, btn, label) {
+    if (armed === key) { armed = null; return true; }
+    armed = key;
+    btn.textContent = label;
+    setTimeout(() => { if (armed === key) { armed = null; if (active) renderGym(); } }, 4000);
+    return false;
+  }
+
+  function endWorkout() {
+    active = null; saveActive(); releaseScreen(); restAlerted = true;
+    renderGym(); updateRestBar();
+    window.scrollTo(0, 0);
+  }
+
+  function finishWorkout() {
+    const d = new Date(active.start);
+    const entries = active.entries.map(en => ({
+      exerciseId: en.exerciseId,
+      sets: en.sets.filter(st => st.done).map(st => ({ kg: parseNum(st.kg), reps: parseNum(st.reps), sec: null, dist: null }))
+    }));
+    const w = {
+      id: 'w' + active.start.toString(36) + Math.random().toString(36).slice(2, 6),
+      date: fmt(d) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()),
+      name: active.name, routineId: active.routineId,
+      durationSec: Math.round((Date.now() - active.start) / 1000), entries
+    };
+    const clean = sanitizeGym({ exercises: gym.exercises, routines: gym.routines, workouts: [w] });
+    const before = JSON.stringify(gym);
+    mergeGym({ exercises: [], routines: [], workouts: clean.workouts });
+    if (!saveGym()) {
+      gym = JSON.parse(before);
+      alert('Der Speicher ist voll. Das Training bleibt offen, bitte sichere erst deine Daten.');
+      return;
+    }
+    endWorkout();
+  }
+
+  // ---- Bedienung im Gym-Bereich ----
+
+  document.getElementById('gymContent').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]');
+    if (!b) return;
+    const act = b.dataset.act;
+    const ei = Number(b.dataset.ex), si = Number(b.dataset.set);
+    const entry = active && active.entries[ei];
+    if (act === 'more') { gymState.shown += 20; renderGym(); }
+    else if (act === 'import') renderSettingsForGym();
+    else if (act === 'start') { const r = gym.routines.find(x => x.id === b.dataset.id); if (r) startWorkout(r); }
+    else if (act === 'start-empty') startWorkout(null);
+    else if (act === 'new-ex') openExSheet(null);
+    else if (act === 'edit-ex') openExSheet(b.dataset.id);
+    else if (act === 'toggle-set' && entry && entry.sets[si]) {
+      const st = entry.sets[si];
+      st.done = !st.done;
+      if (st.done) {
+        prepareAudio();
+        const ex = exById(entry.exerciseId);
+        startRest(ex && ex.rest ? ex.rest : 90);
+      }
+      saveActive(); renderGym();
+    }
+    else if (act === 'add-set' && entry) {
+      const prev = entry.sets[entry.sets.length - 1];
+      entry.sets.push({ kg: prev ? prev.kg : '', reps: prev ? prev.reps : '', done: false });
+      saveActive(); renderGym();
+    }
+    else if (act === 'del-set' && entry && entry.sets.length > 1) { entry.sets.pop(); saveActive(); renderGym(); }
+    else if (act === 'rm-ex' && entry) {
+      if (entry.sets.some(s => s.done) && !confirmTap('rm' + ei, b, 'Entfernen?')) return;
+      active.entries.splice(ei, 1); saveActive(); renderGym();
+    }
+    else if (act === 'add-ex') openPick();
+    else if (act === 'discard') { if (confirmTap('discard', b, 'Wirklich verwerfen?')) endWorkout(); }
+    else if (act === 'finish') {
+      if (!active.entries.some(en => en.sets.some(s => s.done))) {
+        if (confirmTap('finish', b, 'Nichts abgehakt. Verwerfen?')) endWorkout();
+        return;
+      }
+      finishWorkout();
+    }
+  });
+
+  // Beim Tippen in kg/Wdh. nur den Wert merken, ohne neu zu zeichnen (sonst verlierst du den Cursor)
+  document.getElementById('gymContent').addEventListener('input', (e) => {
+    const inp = e.target.closest('.num-input');
+    if (!inp || !active) return;
+    const st = active.entries[Number(inp.dataset.ex)] && active.entries[Number(inp.dataset.ex)].sets[Number(inp.dataset.set)];
+    if (st) { st[inp.dataset.f] = inp.value.slice(0, 8); saveActive(); }
+  });
+
+  // Merkt sich, ob die Übungsliste aufgeklappt ist (das "toggle"-Ereignis steigt nicht auf, daher capture)
+  document.getElementById('gymContent').addEventListener('toggle', (e) => {
+    if (e.target.id === 'exDetails') gymState.exOpen = e.target.open;
+  }, true);
+
+  document.getElementById('restBar').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-rest]');
+    if (!b || !active || !active.restEnd) return;
+    const now = Date.now();
+    if (b.dataset.rest === 'skip') { active.restEnd = null; restAlerted = true; }
+    else if (b.dataset.rest === 'plus') {
+      active.restEnd = Math.max(active.restEnd, now) + 15000; restAlerted = false;
+    } else {
+      active.restEnd = Math.max(now + 1000, active.restEnd - 15000);
+    }
+    saveActive(); updateRestBar();
+  });
+
+  // ---- Übung anlegen / bearbeiten ----
+
+  const exSheet = document.getElementById('exSheet');
+  let exCtx = null;
+
+  function showExRest() { document.getElementById('exRestValue').textContent = clock(exCtx.rest * 1000); }
+
+  function openExSheet(id, after) {
+    const ex = id ? exById(id) : null;
+    exCtx = { id: ex ? ex.id : null, rest: ex && ex.rest ? ex.rest : 90, after: after || null };
+    document.getElementById('exTitle').textContent = ex ? 'Übung bearbeiten' : 'Neue Übung';
+    document.getElementById('exName').value = ex ? ex.name : '';
+    document.getElementById('exMsg').textContent = '';
+    showExRest();
+    exSheet.showModal();
+    document.getElementById('exTitle').focus({ preventScroll: true });
+  }
+
+  document.getElementById('exRestMinus').addEventListener('click', () => { exCtx.rest = Math.max(15, exCtx.rest - 15); showExRest(); });
+  document.getElementById('exRestPlus').addEventListener('click', () => { exCtx.rest = Math.min(600, exCtx.rest + 15); showExRest(); });
+  document.getElementById('exCancel').addEventListener('click', () => exSheet.close());
+  exSheet.addEventListener('click', (e) => { if (e.target === exSheet) exSheet.close(); });
+
+  document.getElementById('exForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById('exName').value.trim().slice(0, 60);
+    const msg = document.getElementById('exMsg');
+    if (!name) { msg.textContent = 'Bitte gib einen Namen ein.'; return; }
+    if (gym.exercises.some(x => x.id !== exCtx.id && x.name.toLowerCase() === name.toLowerCase())) {
+      msg.textContent = 'Eine Übung mit diesem Namen gibt es schon.'; return;
+    }
+    const before = JSON.stringify(gym);
+    let id = exCtx.id;
+    if (id) { const ex = exById(id); ex.name = name; ex.rest = exCtx.rest; }
+    else {
+      id = 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      gym.exercises.push({ id, name, rest: exCtx.rest });
+    }
+    if (!saveGym()) { gym = JSON.parse(before); msg.textContent = 'Der Speicher ist voll.'; return; }
+    exSheet.close();
+    if (exCtx.after) exCtx.after(id);
+    renderGym();
+  });
+
+  // ---- Übung zum laufenden Training hinzufügen ----
+
+  const pickSheet = document.getElementById('pickSheet');
+
+  function renderPick() {
+    const q = document.getElementById('pickFilter').value.trim().toLowerCase();
+    const list = gym.exercises.filter(e => e.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    document.getElementById('pickList').innerHTML = list.length
+      ? list.map(e => '<button type="button" class="ex-row" data-id="' + e.id + '"><span>' + escapeHtml(e.name) + '</span></button>').join('')
+      : '<p class="hint">Nichts gefunden. Mit "Neue Übung" legst du sie an.</p>';
+  }
+
+  function openPick() {
+    document.getElementById('pickFilter').value = '';
+    renderPick();
+    pickSheet.showModal();
+    document.getElementById('pickTitle').focus({ preventScroll: true });
+  }
+
+  function addToWorkout(exId) {
+    if (!active) return;
+    active.entries.push(makeEntry(exId, null));
+    saveActive(); renderGym();
+  }
+
+  document.getElementById('pickFilter').addEventListener('input', renderPick);
+  document.getElementById('pickList').addEventListener('click', (e) => {
+    const b = e.target.closest('.ex-row');
+    if (!b) return;
+    pickSheet.close();
+    addToWorkout(b.dataset.id);
+  });
+  document.getElementById('pickNew').addEventListener('click', () => { pickSheet.close(); openExSheet(null, addToWorkout); });
+  document.getElementById('pickCancel').addEventListener('click', () => pickSheet.close());
+  pickSheet.addEventListener('click', (e) => { if (e.target === pickSheet) pickSheet.close(); });
+
+  // Öffnet die Einstellungen direkt beim Import
+  function renderSettingsForGym() {
+    document.getElementById('settingsBtn').click();
+    document.getElementById('csvDetails').open = true;
+  }
+
+  // ======================================================================
+  // 11) Datensicherung
   // ======================================================================
 
   function setStatus(text, isError) {
@@ -1861,9 +2820,10 @@
   function exportData() {
     const payload = {
       app: 'maximize',
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
-      habits: habits
+      habits: habits,
+      gym: gym
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1874,7 +2834,7 @@
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    setStatus('Sicherung gespeichert (' + habits.length + ' Gewohnheiten).', false);
+    setStatus('Sicherung gespeichert (' + habits.length + ' Gewohnheiten, ' + gym.workouts.length + ' Trainings).', false);
   }
 
   // Prüft, ob ein Eintrag aus einer Datei (oder dem Speicher) wie eine echte Gewohnheit aussieht.
@@ -1895,10 +2855,11 @@
     try {
       const data = JSON.parse(await file.text());
       // 'wegmarken' akzeptieren wir weiter, damit ältere Sicherungen noch lesbar sind
-      if (!data || !['maximize', 'wegmarken'].includes(data.app) || !Array.isArray(data.habits)) {
+      if (!data || !['maximize', 'wegmarken'].includes(data.app) || (!Array.isArray(data.habits) && !data.gym)) {
         throw new Error('format');
       }
-      const valid = data.habits.filter(isValidHabit);
+      const incomingHabits = Array.isArray(data.habits) ? data.habits : [];
+      const valid = incomingHabits.filter(isValidHabit);
       let added = 0;
       valid.forEach(incoming => {
         const existing = habits.find(h => h.id === incoming.id);
@@ -1917,9 +2878,21 @@
       });
       render();
       saveHabits();
-      const skipped = data.habits.length - valid.length;
-      setStatus('Wiederhergestellt: ' + added + ' neu, ' + (valid.length - added) + ' zusammengeführt'
-        + (skipped ? ', ' + skipped + ' übersprungen' : '') + '.', false);
+      const skipped = incomingHabits.length - valid.length;
+      let gymText = '';
+      if (data.gym) {
+        const before = JSON.stringify(gym);
+        const res = mergeGym(sanitizeGym(data.gym));
+        if (saveGym()) {
+          gymText = ' Gym: ' + res.workouts + ' Trainings und ' + res.exercises + ' Übungen neu.';
+          renderGym();
+        } else {
+          gym = JSON.parse(before);
+          gymText = ' Gym-Daten konnten nicht gespeichert werden (Speicher voll).';
+        }
+      }
+      setStatus('Wiederhergestellt: ' + added + ' Habits neu, ' + (valid.length - added) + ' zusammengeführt'
+        + (skipped ? ', ' + skipped + ' übersprungen' : '') + '.' + gymText, false);
     } catch (e) {
       setStatus('Diese Datei ist keine gültige Sicherung von Maximize.', true);
     }
@@ -1934,7 +2907,7 @@
   });
 
   // ======================================================================
-  // 10) Bereiche (untere Leiste)
+  // 12) Bereiche (untere Leiste)
   // ======================================================================
 
   // Jeder Bereich hat einen Titel und einen Abschnitt in der Seite (#view-<name>).
@@ -1955,8 +2928,10 @@
     });
     // Untertitel und Eingabeleiste gehören nur zu den Habits
     subtitleEl.hidden = name !== 'habits';
+    document.getElementById('gymSubtitle').hidden = name !== 'gym';
     currentView = name;
     updateChrome();
+    if (name === 'gym') renderGym();
     window.scrollTo(0, 0);
     try { localStorage.setItem(VIEW_KEY, name); } catch (e) { /* nicht kritisch */ }
   }
@@ -1967,12 +2942,16 @@
   });
 
   // ======================================================================
-  // 11) Start
+  // 13) Start
   // ======================================================================
 
   showTodayLabel();
   loadSettings();
+  loadGym();
+  loadActive();
   loadHabits();
+  // Bittet den Browser, die Daten nicht von selbst zu löschen, wenn der Speicher knapp wird
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   let savedView = 'habits';
   try { savedView = localStorage.getItem(VIEW_KEY) || 'habits'; } catch (e) { /* Standard */ }
   setView(savedView);
