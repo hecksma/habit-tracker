@@ -418,6 +418,15 @@
 
   showTodayLabel();
   loadHabits();
+
+  // Meldet den Service Worker (sw.js) beim Browser an, damit die App offline starten kann.
+  // Das geht nur über https (oder localhost), nicht beim Öffnen der Datei per Doppelklick,
+  // deshalb die Prüfung davor.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
 </script>
 
 </body>
