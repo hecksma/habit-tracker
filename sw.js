@@ -4,7 +4,7 @@
 
 // Name des Zwischenspeichers. Wenn du hier die Zahl erhöhst (v2, v3 ...),
 // wird beim nächsten Besuch ein neuer Speicher angelegt und der alte gelöscht.
-const CACHE = 'wegmarken-v1';
+const CACHE = 'maximize-v1';
 
 // Die Dateien, die die App zum Starten mindestens braucht.
 const APP_FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];

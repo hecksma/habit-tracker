@@ -247,6 +247,37 @@
   .error-banner {
     color: var(--danger);
   }
+
+  .data-tools {
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .tool-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--ink-dim);
+    border-radius: 999px;
+    padding: 10px 16px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .tool-btn:active { color: var(--ink); border-color: var(--ink-dim); }
+
+  .status {
+    margin: 12px 0 0;
+    font-size: 13px;
+    color: var(--sage);
+    min-height: 1em;
+  }
+
+  .status.error { color: var(--danger); }
 </style>
 </head>
 <body>
@@ -260,6 +291,14 @@
 <div id="content">
   <div class="loading">Lade deine Daten …</div>
 </div>
+
+<!-- Sicherung: Export schreibt alle Gewohnheiten in eine Datei, Import liest sie wieder ein -->
+<div class="data-tools">
+  <button type="button" class="tool-btn" id="exportBtn">Daten sichern</button>
+  <button type="button" class="tool-btn" id="importBtn">Daten wiederherstellen</button>
+  <input type="file" id="importFile" accept=".json,application/json" hidden />
+</div>
+<p class="status" id="status" role="status" aria-live="polite"></p>
 
 <div class="add-bar">
   <form class="add-form" id="addForm">
@@ -414,6 +453,89 @@
     habitInput.value = '';
     render();
     saveHabits();
+  });
+
+  // ---- Datensicherung ----
+
+  function setStatus(text, isError) {
+    const el = document.getElementById('status');
+    el.textContent = text;
+    el.className = 'status' + (isError ? ' error' : '');
+  }
+
+  // Export: Die Liste wird als Text (JSON) in eine Datei geschrieben und
+  // über einen unsichtbaren Download-Link an den Browser übergeben.
+  function exportData() {
+    const payload = {
+      app: 'wegmarken',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      habits: habits
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'wegmarken-sicherung-' + todayStr() + '.json';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setStatus('Sicherung gespeichert (' + habits.length + ' Gewohnheiten).', false);
+  }
+
+  // Prüft, ob ein Eintrag aus einer Datei wie eine echte Gewohnheit aussieht.
+  // Dateien kommen von außen, deshalb vertrauen wir ihnen nicht blind:
+  // Die ID landet später im HTML und darf nur Buchstaben und Ziffern enthalten.
+  function isValidHabit(h) {
+    return h
+      && typeof h.id === 'string' && /^[a-z0-9]{1,40}$/i.test(h.id)
+      && typeof h.name === 'string' && h.name.trim().length > 0 && h.name.length <= 40
+      && Array.isArray(h.completions)
+      && h.completions.every(d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d));
+  }
+
+  // Import: Die Daten aus der Datei werden mit den vorhandenen ZUSAMMENGEFÜHRT.
+  // Nichts wird überschrieben oder gelöscht: neue Gewohnheiten kommen dazu,
+  // bei gleicher ID werden die erledigten Tage vereint.
+  async function importData(file) {
+    try {
+      const data = JSON.parse(await file.text());
+      if (!data || data.app !== 'wegmarken' || !Array.isArray(data.habits)) {
+        throw new Error('format');
+      }
+      const valid = data.habits.filter(isValidHabit);
+      let added = 0;
+      valid.forEach(incoming => {
+        const existing = habits.find(h => h.id === incoming.id);
+        if (existing) {
+          existing.completions = Array.from(new Set([...(existing.completions || []), ...incoming.completions]));
+        } else {
+          habits.push({
+            id: incoming.id,
+            name: incoming.name.trim(),
+            createdAt: typeof incoming.createdAt === 'string' ? incoming.createdAt : todayStr(),
+            completions: Array.from(new Set(incoming.completions))
+          });
+          added++;
+        }
+      });
+      render();
+      saveHabits();
+      const skipped = data.habits.length - valid.length;
+      setStatus('Wiederhergestellt: ' + added + ' neu, ' + (valid.length - added) + ' zusammengeführt'
+        + (skipped ? ', ' + skipped + ' übersprungen' : '') + '.', false);
+    } catch (e) {
+      setStatus('Diese Datei ist keine gültige Sicherung von Wegmarken.', true);
+    }
+  }
+
+  document.getElementById('exportBtn').addEventListener('click', exportData);
+  document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
+  document.getElementById('importFile').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) importData(file);
+    e.target.value = ''; // damit dieselbe Datei später erneut gewählt werden kann
   });
 
   showTodayLabel();
