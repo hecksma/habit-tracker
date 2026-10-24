@@ -252,7 +252,7 @@
 <body>
 
 <header>
-  <p class="eyebrow">Wegmarken</p>
+  <p class="eyebrow" id="todayLabel">Wegmarken</p>
   <h1>Deine Gewohnheiten</h1>
   <p class="subtitle" id="subtitle">Tippe den Kreis, wenn du eine Gewohnheit heute erledigt hast.</p>
 </header>
@@ -282,6 +282,13 @@
   function todayStr() {
     const d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  // Zeigt das heutige Datum oben an, z. B. "Samstag, 24. Oktober".
+  // toLocaleDateString formatiert ein Datum passend zur Sprache ('de-DE' = Deutsch).
+  function showTodayLabel() {
+    const text = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+    document.getElementById('todayLabel').textContent = text;
   }
 
   function dateStrDaysAgo(n) {
@@ -409,6 +416,7 @@
     saveHabits();
   });
 
+  showTodayLabel();
   loadHabits();
 </script>
 
