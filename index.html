@@ -21,6 +21,7 @@
     --sage: #7FA285;
     --danger: #C97A6D;
     --border: rgba(241, 239, 231, 0.12);
+    --ring: rgba(241, 239, 231, 0.30);
     --radius: 14px;
   }
 
@@ -42,9 +43,14 @@
     margin: 0 auto;
   }
 
-  header {
-    margin-bottom: 28px;
+  button { font-family: inherit; }
+
+  button:focus-visible, input:focus-visible {
+    outline: 2px solid var(--sage);
+    outline-offset: 2px;
   }
+
+  header { margin-bottom: 28px; }
 
   .eyebrow {
     font-size: 13px;
@@ -75,19 +81,25 @@
     margin-top: 24px;
   }
 
+  /* ---- Karte einer Gewohnheit ---- */
+
   .habit-card {
     background: var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 18px 18px;
+    padding: 16px 14px 10px 16px;
     display: flex;
-    align-items: center;
-    gap: 14px;
+    flex-direction: column;
+    gap: 10px;
     transition: border-color 0.2s ease;
   }
 
-  .habit-card.done {
-    border-color: rgba(232, 163, 61, 0.5);
+  .habit-card.done { border-color: rgba(232, 163, 61, 0.5); }
+
+  .habit-top {
+    display: flex;
+    align-items: center;
+    gap: 14px;
   }
 
   .check-btn {
@@ -113,14 +125,9 @@
     color: var(--bg);
   }
 
-  .check-btn:active {
-    transform: scale(0.92);
-  }
+  .check-btn:active { transform: scale(0.92); }
 
-  .habit-info {
-    flex: 1;
-    min-width: 0;
-  }
+  .habit-info { flex: 1; min-width: 0; }
 
   .habit-name {
     font-family: 'Fraunces', serif;
@@ -147,22 +154,85 @@
     font-weight: 600;
   }
 
-  .delete-btn {
+  .plan {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--ink-dim);
+    opacity: 0.8;
+  }
+
+  .joker { color: var(--sage); opacity: 1; }
+
+  .edit-btn {
     flex-shrink: 0;
     background: none;
     border: none;
     color: var(--ink-dim);
-    font-size: 18px;
-    cursor: pointer;
-    padding: 8px;
+    font-size: 22px;
     line-height: 1;
-    opacity: 0.6;
+    cursor: pointer;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
   }
 
-  .delete-btn:active {
-    opacity: 1;
-    color: var(--danger);
+  .edit-btn:active { color: var(--ink); background: rgba(241, 239, 231, 0.06); }
+
+  /* ---- Wochenansicht ---- */
+
+  .week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    border-top: 1px solid var(--border);
+    padding-top: 6px;
   }
+
+  .day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    padding: 4px 0;
+    min-height: 48px;
+    color: var(--ink-dim);
+    cursor: pointer;
+  }
+
+  .day-label { font-size: 11px; }
+
+  .day.today .day-label { color: var(--ink); font-weight: 600; }
+
+  .dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--ring);
+    display: block;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+
+  /* Tag ist erledigt */
+  .day.checked .dot { background: var(--amber); border-color: var(--amber); }
+
+  /* Heute, noch offen */
+  .day.today:not(.checked) .dot { border-color: var(--sage); }
+
+  /* Kein geplanter Tag: nur ein kleiner Punkt, aber antippbar (Bonus) */
+  .day.off:not(.checked) .dot {
+    width: 10px;
+    height: 10px;
+    margin: 9px;
+    border: none;
+    background: var(--ring);
+  }
+
+  /* Zukunft: nicht antippbar */
+  .day:disabled { cursor: default; }
+  .day:disabled .dot { opacity: 0.35; border-style: dashed; }
+  .day.off:disabled .dot { border-style: none; }
 
   .empty-state {
     text-align: center;
@@ -176,6 +246,8 @@
     color: var(--ink);
     margin-bottom: 8px;
   }
+
+  /* ---- Eingabeleiste unten ---- */
 
   .add-bar {
     position: fixed;
@@ -210,9 +282,7 @@
     min-width: 0;
   }
 
-  .add-form input::placeholder {
-    color: var(--ink-dim);
-  }
+  .add-form input::placeholder { color: var(--ink-dim); }
 
   .add-form button {
     background: var(--sage);
@@ -229,13 +299,7 @@
     justify-content: center;
   }
 
-  .add-form button:active {
-    transform: scale(0.94);
-  }
-
-  .add-form button:disabled {
-    opacity: 0.4;
-  }
+  .add-form button:active { transform: scale(0.94); }
 
   .loading, .error-banner {
     text-align: center;
@@ -244,9 +308,9 @@
     font-size: 14px;
   }
 
-  .error-banner {
-    color: var(--danger);
-  }
+  .error-banner { color: var(--danger); }
+
+  /* ---- Datensicherung ---- */
 
   .data-tools {
     margin-top: 32px;
@@ -263,12 +327,12 @@
     color: var(--ink-dim);
     border-radius: 999px;
     padding: 10px 16px;
-    font-family: 'Inter', sans-serif;
     font-size: 13px;
     cursor: pointer;
   }
 
   .tool-btn:active { color: var(--ink); border-color: var(--ink-dim); }
+  .tool-btn:disabled { opacity: 0.35; cursor: default; }
 
   .status {
     margin: 12px 0 0;
@@ -278,6 +342,155 @@
   }
 
   .status.error { color: var(--danger); }
+
+  /* ---- Bearbeiten-Fenster ---- */
+
+  dialog {
+    background: var(--bg-elevated);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 22px 20px 18px;
+    width: min(440px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+  }
+
+  dialog::backdrop { background: rgba(10, 16, 14, 0.72); }
+
+  dialog h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 22px;
+    margin: 0 0 18px;
+  }
+
+  .field { margin-bottom: 18px; }
+
+  .field > label, .field > .label {
+    display: block;
+    font-size: 13px;
+    color: var(--ink-dim);
+    margin-bottom: 8px;
+  }
+
+  .text-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    padding: 12px 14px;
+  }
+
+  .seg {
+    display: flex;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px;
+    gap: 3px;
+  }
+
+  .seg button {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--ink-dim);
+    border-radius: 999px;
+    padding: 10px 6px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .seg button[aria-pressed="true"] { background: var(--sage); color: var(--bg); font-weight: 600; }
+
+  .chips {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+
+  .chip {
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--ink-dim);
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .chip[aria-pressed="true"] { background: var(--sage); border-color: var(--sage); color: var(--bg); font-weight: 600; }
+
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .stepper button {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--ink);
+    font-size: 20px;
+    cursor: pointer;
+  }
+
+  .stepper button:disabled { opacity: 0.3; cursor: default; }
+
+  .stepper .value {
+    font-family: 'Fraunces', serif;
+    font-size: 24px;
+    min-width: 2ch;
+    text-align: center;
+  }
+
+  .hint {
+    font-size: 12.5px;
+    color: var(--ink-dim);
+    line-height: 1.5;
+    margin: 10px 0 0;
+  }
+
+  .sheet-msg {
+    color: var(--danger);
+    font-size: 13px;
+    min-height: 1.2em;
+    margin: 0 0 8px;
+  }
+
+  .sheet-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .sheet-actions .spacer { flex: 1; }
+
+  .btn {
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--ink);
+    font-size: 14px;
+    padding: 11px 18px;
+    cursor: pointer;
+  }
+
+  .btn.primary { background: var(--sage); border-color: var(--sage); color: var(--bg); font-weight: 600; }
+  .btn.danger { border-color: transparent; color: var(--danger); padding-left: 4px; padding-right: 4px; }
+  .btn.danger.confirm { background: var(--danger); color: var(--bg); border-color: var(--danger); padding: 11px 16px; font-weight: 600; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -285,7 +498,7 @@
 <header>
   <p class="eyebrow" id="todayLabel">Maximize</p>
   <h1>Deine Gewohnheiten</h1>
-  <p class="subtitle" id="subtitle">Tippe den Kreis, wenn du eine Gewohnheit heute erledigt hast.</p>
+  <p class="subtitle" id="subtitle">Lege unten deine erste Gewohnheit an.</p>
 </header>
 
 <div id="content">
@@ -302,17 +515,80 @@
 
 <div class="add-bar">
   <form class="add-form" id="addForm">
-    <input type="text" id="habitInput" placeholder="Neue Gewohnheit, z. B. 'Lesen'" maxlength="40" autocomplete="off" />
+    <input type="text" id="habitInput" placeholder="Neue Gewohnheit, z. B. 'Lesen'" maxlength="40" autocomplete="off" aria-label="Name der neuen Gewohnheit" />
     <button type="submit" id="addBtn" aria-label="Hinzufügen">+</button>
   </form>
 </div>
 
+<!-- Bearbeiten-Fenster: Das <dialog>-Element ist ein eingebautes Fenster des Browsers.
+     showModal() öffnet es und dunkelt den Rest ab, close() schließt es. -->
+<dialog id="sheet" aria-labelledby="sheetTitle">
+  <form id="sheetForm">
+    <h2 id="sheetTitle">Gewohnheit bearbeiten</h2>
+
+    <div class="field">
+      <label for="sheetName">Name</label>
+      <input type="text" id="sheetName" class="text-input" maxlength="40" autocomplete="off" />
+    </div>
+
+    <div class="field">
+      <span class="label" id="planLabel">Wie oft?</span>
+      <div class="seg" role="group" aria-labelledby="planLabel">
+        <button type="button" data-mode="days" aria-pressed="true">Feste Tage</button>
+        <button type="button" data-mode="weekly" aria-pressed="false">Mal pro Woche</button>
+      </div>
+    </div>
+
+    <div class="field" id="daysPane">
+      <span class="label">An welchen Tagen?</span>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="field" id="weeklyPane" hidden>
+      <span class="label">Wie oft pro Woche?</span>
+      <div class="stepper">
+        <button type="button" id="timesMinus" aria-label="Weniger">−</button>
+        <span class="value" id="timesValue" aria-live="polite">3</span>
+        <button type="button" id="timesPlus" aria-label="Mehr">+</button>
+        <span style="color: var(--ink-dim); font-size: 14px;">mal pro Woche</span>
+      </div>
+    </div>
+
+    <p class="hint" id="planHint"></p>
+
+    <div class="field" style="margin-top: 18px;">
+      <span class="label">Reihenfolge in der Liste</span>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" class="tool-btn" id="moveUp">Nach oben</button>
+        <button type="button" class="tool-btn" id="moveDown">Nach unten</button>
+      </div>
+    </div>
+
+    <p class="sheet-msg" id="sheetMsg" role="alert"></p>
+
+    <div class="sheet-actions">
+      <button type="button" class="btn danger" id="deleteBtn">Löschen</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="cancelBtn">Abbrechen</button>
+      <button type="submit" class="btn primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
 <script>
+  // ======================================================================
+  // 1) Grundlagen: Speicher und Datumshilfen
+  // ======================================================================
+
   // Unter diesem Namen liegen deine Daten im Browser-Speicher (localStorage)
   const STORAGE_KEY = 'maximize-habits';
   // Alter Speicherort aus der Zeit, als die App noch anders hieß.
   // Wir lesen ihn weiter, damit bestehende Daten nicht verloren gehen.
   const LEGACY_STORAGE_KEY = 'wegmarken-habits';
+
+  const DAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']; // Index 0 = Montag
+  const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+
   let habits = [];
   let loaded = false;
 
@@ -321,45 +597,146 @@
   const addForm = document.getElementById('addForm');
   const habitInput = document.getElementById('habitInput');
 
-  function todayStr() {
-    const d = new Date();
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  }
+  // Datumsangaben speichern wir als Text im Format "2026-10-24" (Jahr-Monat-Tag).
+  // Das lässt sich alphabetisch vergleichen: "2026-10-24" < "2026-10-25".
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function fmt(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  // Mittag statt Mitternacht, damit Zeitumstellungen kein Datum verschieben
+  function parseDate(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d, 12); }
+  function addDays(d, n) { const x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; }
+  function todayStr() { return fmt(new Date()); }
+  // JavaScript zählt Sonntag = 0. Wir wollen Montag = 0, deshalb die Umrechnung.
+  function weekdayIdx(d) { return (d.getDay() + 6) % 7; }
+  function weekStart(d) { return addDays(d, -weekdayIdx(d)); }
 
   // Zeigt das heutige Datum oben an, z. B. "Samstag, 24. Oktober".
-  // toLocaleDateString formatiert ein Datum passend zur Sprache ('de-DE' = Deutsch).
   function showTodayLabel() {
     const text = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
     document.getElementById('todayLabel').textContent = text;
   }
 
-  function dateStrDaysAgo(n) {
-    const d = new Date();
-    d.setDate(d.getDate() - n);
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
   }
 
-  function computeStreak(completions) {
-    const set = new Set(completions);
-    const today = todayStr();
-    let streak = 0;
-    let offset = set.has(today) ? 0 : 1;
-    // if not done today, streak counts back from yesterday; if today done, count from today
-    while (set.has(dateStrDaysAgo(offset))) {
-      streak++;
-      offset++;
+  // ======================================================================
+  // 2) Plan und Serie
+  // ======================================================================
+
+  // Jede Gewohnheit hat einen Plan (schedule). Es gibt zwei Arten:
+  //   { type: 'days',   days: [0, 2, 4] }  → feste Wochentage (0 = Mo ... 6 = So)
+  //   { type: 'weekly', times: 3 }          → so oft pro Woche, egal an welchen Tagen
+  // Ältere Gewohnheiten haben noch keinen Plan und gelten als "täglich".
+  function getSchedule(h) {
+    const s = h && h.schedule;
+    if (s && s.type === 'weekly' && Number.isInteger(s.times) && s.times >= 1 && s.times <= 7) {
+      return { type: 'weekly', times: s.times };
     }
-    return streak;
+    if (s && s.type === 'days' && Array.isArray(s.days) && s.days.length > 0
+        && s.days.every(n => Number.isInteger(n) && n >= 0 && n <= 6)) {
+      return { type: 'days', days: Array.from(new Set(s.days)).sort((a, b) => a - b) };
+    }
+    return { type: 'days', days: ALL_DAYS.slice() };
   }
 
-  // localStorage ist ein kleiner Speicher, den jeder Browser mitbringt.
-  // Er speichert nur Text, deshalb wandeln wir die Liste mit JSON.stringify in Text um
+  // Der erste Tag, ab dem Tage zählen. Davor wird nichts als "verpasst" gewertet.
+  function firstDay(h) {
+    const sorted = (h.completions || []).slice().sort();
+    const candidates = [h.createdAt, sorted[0]]
+      .filter(x => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x))
+      .sort();
+    return candidates[0] || todayStr();
+  }
+
+  // Berechnet die Serie. Wir laufen Tag für Tag rückwärts von heute.
+  //
+  // Feste Tage:
+  //   - Ein erledigter Tag zählt +1 (auch ein Bonus-Tag, der nicht geplant war).
+  //   - Ein nicht geplanter, nicht erledigter Tag wird übersprungen.
+  //   - Ein geplanter, verpasster Tag ist pro Kalenderwoche einmal erlaubt (Joker).
+  //     Beim zweiten verpassten Tag in derselben Woche endet die Serie.
+  //   - Heute zählt noch nicht als verpasst, der Tag ist ja noch nicht vorbei.
+  //
+  // X-mal pro Woche:
+  //   - Die Serie zählt Wochen (Mo bis So), in denen das Ziel erreicht wurde.
+  //   - Die laufende Woche und die Startwoche der Gewohnheit brechen nie ab.
+  function computeStreak(h, today) {
+    today = today || todayStr();
+    const sched = getSchedule(h);
+    const done = new Set(h.completions || []);
+    const first = firstDay(h);
+    const t = parseDate(today);
+    let streak = 0;
+
+    if (sched.type === 'weekly') {
+      const thisWeek = weekStart(t);
+      for (let i = 0; i < 600; i++) {
+        const ws = addDays(thisWeek, -7 * i);
+        if (fmt(addDays(ws, 6)) < first) break;
+        let count = 0;
+        for (let k = 0; k < 7; k++) if (done.has(fmt(addDays(ws, k)))) count++;
+        if (count >= sched.times) streak++;
+        else if (i === 0 || fmt(ws) <= first) continue;
+        else break;
+      }
+      return { value: streak, unit: 'weeks', jokerUsed: false };
+    }
+
+    const joker = {};
+    for (let i = 0; i < 4000; i++) {
+      const day = addDays(t, -i);
+      const key = fmt(day);
+      if (key < first) break;
+      if (done.has(key)) { streak++; continue; }
+      if (!sched.days.includes(weekdayIdx(day))) continue;
+      if (i === 0) continue;
+      const wk = fmt(weekStart(day));
+      if (!joker[wk]) { joker[wk] = true; continue; }
+      break;
+    }
+    return { value: streak, unit: 'days', jokerUsed: !!joker[fmt(weekStart(t))] };
+  }
+
+  // Wie oft wurde die Gewohnheit in der Woche von "today" erledigt?
+  function countThisWeek(h, today) {
+    const done = new Set(h.completions || []);
+    const ws = weekStart(parseDate(today));
+    let n = 0;
+    for (let k = 0; k < 7; k++) if (done.has(fmt(addDays(ws, k)))) n++;
+    return n;
+  }
+
+  // Ist die Gewohnheit heute "dran"? Wird für die Zeile oben (z. B. "2 von 3") gebraucht.
+  function isDueToday(h, today) {
+    const sched = getSchedule(h);
+    const doneToday = (h.completions || []).includes(today);
+    if (sched.type === 'days') return sched.days.includes(weekdayIdx(parseDate(today))) || doneToday;
+    return doneToday || countThisWeek(h, today) < sched.times;
+  }
+
+  function planText(h, today) {
+    const sched = getSchedule(h);
+    if (sched.type === 'weekly') {
+      return countThisWeek(h, today) + ' von ' + sched.times + ' diese Woche';
+    }
+    if (sched.days.length === 7) return 'Täglich';
+    return sched.days.map(i => DAY_LABELS[i]).join(' ');
+  }
+
+  // ======================================================================
+  // 3) Laden und Speichern
+  // ======================================================================
+
+  // localStorage speichert nur Text, deshalb wandeln wir die Liste mit JSON.stringify in Text um
   // (beim Speichern) und mit JSON.parse zurück in eine Liste (beim Laden).
   // try/catch fängt Fehler ab, damit die App nicht abstürzt, falls der Speicher nicht verfügbar ist.
   function loadHabits() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
-      habits = raw ? JSON.parse(raw) : [];
+      const parsed = raw ? JSON.parse(raw) : [];
+      habits = Array.isArray(parsed) ? parsed.filter(isValidHabit) : [];
     } catch (e) {
       habits = [];
     }
@@ -375,73 +752,101 @@
     }
   }
 
+  // ======================================================================
+  // 4) Anzeige
+  // ======================================================================
+
+  function renderCard(h, today) {
+    const done = new Set(h.completions || []);
+    const sched = getSchedule(h);
+    const isDone = done.has(today);
+    const streak = computeStreak(h, today);
+    const unitText = streak.unit === 'weeks'
+      ? (streak.value === 1 ? 'Woche Serie' : 'Wochen Serie')
+      : (streak.value === 1 ? 'Tag Serie' : 'Tage Serie');
+
+    // Die sieben Tage der aktuellen Woche (Montag bis Sonntag)
+    const ws = weekStart(parseDate(today));
+    let cells = '';
+    for (let k = 0; k < 7; k++) {
+      const d = addDays(ws, k);
+      const key = fmt(d);
+      const checked = done.has(key);
+      const planned = sched.type === 'weekly' ? true : sched.days.includes(k);
+      const classes = ['day'];
+      if (checked) classes.push('checked');
+      if (key === today) classes.push('today');
+      if (!planned) classes.push('off');
+      const label = DAY_LABELS[k] + ' ' + d.getDate() + '.' + (d.getMonth() + 1) + '.: ' + (checked ? 'erledigt' : 'offen');
+      cells += '<button type="button" class="' + classes.join(' ') + '" data-action="toggle-day" data-id="' + h.id + '" data-date="' + key + '"'
+        + ' aria-label="' + label + '" aria-pressed="' + checked + '"' + (key > today ? ' disabled' : '') + '>'
+        + '<span class="day-label">' + DAY_LABELS[k] + '</span><span class="dot"></span></button>';
+    }
+
+    return '<div class="habit-card ' + (isDone ? 'done' : '') + '">'
+      + '<div class="habit-top">'
+      +   '<button type="button" class="check-btn ' + (isDone ? 'done' : '') + '" data-action="toggle-day" data-id="' + h.id + '" data-date="' + today + '"'
+      +     ' aria-label="' + escapeHtml(h.name) + ' heute ' + (isDone ? 'zurücknehmen' : 'erledigen') + '">' + (isDone ? '✓' : '') + '</button>'
+      +   '<div class="habit-info">'
+      +     '<p class="habit-name">' + escapeHtml(h.name) + '</p>'
+      +     '<div class="streak-row"><span class="streak-num">' + streak.value + '</span><span>' + unitText + '</span></div>'
+      +     '<p class="plan">' + planText(h, today) + (streak.jokerUsed ? ' <span class="joker">Joker diese Woche genutzt</span>' : '') + '</p>'
+      +   '</div>'
+      +   '<button type="button" class="edit-btn" data-action="edit" data-id="' + h.id + '" aria-label="' + escapeHtml(h.name) + ' bearbeiten">⋯</button>'
+      + '</div>'
+      + '<div class="week">' + cells + '</div>'
+      + '</div>';
+  }
+
   function render() {
     if (!loaded) {
       contentEl.innerHTML = '<div class="loading">Lade deine Daten …</div>';
       return;
     }
 
-    const doneCount = habits.filter(h => (h.completions || []).includes(todayStr())).length;
-    if (habits.length > 0) {
-      subtitleEl.textContent = doneCount + ' von ' + habits.length + ' heute erledigt';
-    } else {
-      subtitleEl.textContent = 'Tippe den Kreis, wenn du eine Gewohnheit heute erledigt hast.';
-    }
+    const today = todayStr();
 
     if (habits.length === 0) {
+      subtitleEl.textContent = 'Lege unten deine erste Gewohnheit an.';
       contentEl.innerHTML = '<div class="empty-state"><div class="big">Noch keine Gewohnheiten</div>Füge unten deine erste hinzu.</div>';
       return;
     }
 
-    contentEl.innerHTML = '<div class="habit-list">' +
-      habits.map(h => {
-        const isDone = (h.completions || []).includes(todayStr());
-        const streak = computeStreak(h.completions || []);
-        return `
-          <div class="habit-card ${isDone ? 'done' : ''}">
-            <button class="check-btn ${isDone ? 'done' : ''}" onclick="toggleToday('${h.id}')" aria-label="Als erledigt markieren">
-              ${isDone ? '✓' : ''}
-            </button>
-            <div class="habit-info">
-              <p class="habit-name">${escapeHtml(h.name)}</p>
-              <div class="streak-row">
-                <span class="streak-num">${streak}</span>
-                <span>${streak === 1 ? 'Tag Serie' : 'Tage Serie'}</span>
-              </div>
-            </div>
-            <button class="delete-btn" onclick="deleteHabit('${h.id}')" aria-label="Löschen">✕</button>
-          </div>
-        `;
-      }).join('') +
-      '</div>';
+    const due = habits.filter(h => isDueToday(h, today));
+    const doneCount = due.filter(h => (h.completions || []).includes(today)).length;
+    subtitleEl.textContent = due.length === 0
+      ? 'Heute ist nichts geplant.'
+      : doneCount + ' von ' + due.length + ' heute erledigt';
+
+    contentEl.innerHTML = '<div class="habit-list">' + habits.map(h => renderCard(h, today)).join('') + '</div>';
   }
 
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
+  // ======================================================================
+  // 5) Aktionen
+  // ======================================================================
 
-  window.toggleToday = function(id) {
+  // Erledigt-Status eines Tages umschalten (heute oder ein vergangener Tag zum Nachtragen)
+  function toggleDay(id, date) {
     const habit = habits.find(h => h.id === id);
-    if (!habit) return;
+    if (!habit || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date > todayStr()) return;
     habit.completions = habit.completions || [];
-    const today = todayStr();
-    const idx = habit.completions.indexOf(today);
-    if (idx >= 0) {
-      habit.completions.splice(idx, 1);
-    } else {
-      habit.completions.push(today);
-    }
+    const idx = habit.completions.indexOf(date);
+    if (idx >= 0) habit.completions.splice(idx, 1);
+    else habit.completions.push(date);
     render();
     saveHabits();
-  };
+  }
 
-  window.deleteHabit = function(id) {
-    habits = habits.filter(h => h.id !== id);
-    render();
-    saveHabits();
-  };
+  // "Event Delegation": Statt jedem Button einen eigenen Klick-Handler zu geben,
+  // hören wir einmal auf den ganzen Bereich und schauen, auf welchen Button geklickt wurde.
+  // Welche Aktion gemeint ist, steht im Attribut data-action des Buttons.
+  contentEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    if (action === 'toggle-day') toggleDay(btn.dataset.id, btn.dataset.date);
+    if (action === 'edit') openSheet(btn.dataset.id);
+  });
 
   addForm.addEventListener('submit', function(e) {
     e.preventDefault();
@@ -451,6 +856,7 @@
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
       name: name,
       createdAt: todayStr(),
+      schedule: { type: 'days', days: ALL_DAYS.slice() },
       completions: []
     });
     habitInput.value = '';
@@ -458,7 +864,137 @@
     saveHabits();
   });
 
-  // ---- Datensicherung ----
+  // ======================================================================
+  // 6) Bearbeiten-Fenster
+  // ======================================================================
+
+  const sheetEl = document.getElementById('sheet');
+  const sheetForm = document.getElementById('sheetForm');
+  const sheetName = document.getElementById('sheetName');
+  const sheetMsg = document.getElementById('sheetMsg');
+  const chipsEl = document.getElementById('chips');
+  const deleteBtn = document.getElementById('deleteBtn');
+  let sheet = null; // Zwischenstand, solange das Fenster offen ist
+
+  // Die sieben Tages-Knöpfe einmalig erzeugen
+  DAY_LABELS.forEach((label, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.textContent = label;
+    b.dataset.day = i;
+    chipsEl.appendChild(b);
+  });
+
+  function openSheet(id) {
+    const h = habits.find(x => x.id === id);
+    if (!h) return;
+    const s = getSchedule(h);
+    sheet = {
+      id: id,
+      mode: s.type,
+      days: new Set(s.type === 'days' ? s.days : ALL_DAYS),
+      times: s.type === 'weekly' ? s.times : 3,
+      confirmDelete: false
+    };
+    sheetName.value = h.name;
+    sheetMsg.textContent = '';
+    renderSheet();
+    sheetEl.showModal();
+  }
+
+  function renderSheet() {
+    if (!sheet) return;
+    document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === sheet.mode)));
+    document.getElementById('daysPane').hidden = sheet.mode !== 'days';
+    document.getElementById('weeklyPane').hidden = sheet.mode !== 'weekly';
+    chipsEl.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(sheet.days.has(Number(c.dataset.day)))));
+    document.getElementById('timesValue').textContent = sheet.times;
+    document.getElementById('timesMinus').disabled = sheet.times <= 1;
+    document.getElementById('timesPlus').disabled = sheet.times >= 7;
+    document.getElementById('planHint').textContent = sheet.mode === 'days'
+      ? 'Ein verpasster Tag pro Woche ist erlaubt (Joker). Beim zweiten verpassten Tag in einer Woche endet die Serie.'
+      : 'Die Serie zählt Wochen, in denen du dein Ziel erreichst. Welche Tage du wählst, ist egal.';
+    const idx = habits.findIndex(h => h.id === sheet.id);
+    document.getElementById('moveUp').disabled = idx <= 0;
+    document.getElementById('moveDown').disabled = idx === habits.length - 1;
+    deleteBtn.textContent = sheet.confirmDelete ? 'Wirklich löschen?' : 'Löschen';
+    deleteBtn.classList.toggle('confirm', sheet.confirmDelete);
+  }
+
+  function closeSheet() {
+    sheet = null;
+    if (sheetEl.open) sheetEl.close();
+  }
+
+  document.querySelector('.seg').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-mode]');
+    if (!b || !sheet) return;
+    sheet.mode = b.dataset.mode;
+    renderSheet();
+  });
+
+  chipsEl.addEventListener('click', (e) => {
+    const c = e.target.closest('.chip');
+    if (!c || !sheet) return;
+    const day = Number(c.dataset.day);
+    if (sheet.days.has(day)) sheet.days.delete(day); else sheet.days.add(day);
+    sheetMsg.textContent = '';
+    renderSheet();
+  });
+
+  document.getElementById('timesMinus').addEventListener('click', () => { if (sheet && sheet.times > 1) { sheet.times--; renderSheet(); } });
+  document.getElementById('timesPlus').addEventListener('click', () => { if (sheet && sheet.times < 7) { sheet.times++; renderSheet(); } });
+
+  function moveHabit(direction) {
+    if (!sheet) return;
+    const i = habits.findIndex(h => h.id === sheet.id);
+    const j = i + direction;
+    if (i < 0 || j < 0 || j >= habits.length) return;
+    [habits[i], habits[j]] = [habits[j], habits[i]];
+    render();
+    saveHabits();
+    renderSheet();
+  }
+  document.getElementById('moveUp').addEventListener('click', () => moveHabit(-1));
+  document.getElementById('moveDown').addEventListener('click', () => moveHabit(1));
+
+  // Löschen braucht zwei Klicks, damit nichts aus Versehen verschwindet
+  deleteBtn.addEventListener('click', () => {
+    if (!sheet) return;
+    if (!sheet.confirmDelete) { sheet.confirmDelete = true; renderSheet(); return; }
+    habits = habits.filter(h => h.id !== sheet.id);
+    render();
+    saveHabits();
+    closeSheet();
+  });
+
+  document.getElementById('cancelBtn').addEventListener('click', closeSheet);
+
+  // Klick auf den abgedunkelten Hintergrund schließt das Fenster
+  sheetEl.addEventListener('click', (e) => { if (e.target === sheetEl) closeSheet(); });
+  sheetEl.addEventListener('close', () => { sheet = null; });
+
+  sheetForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!sheet) return;
+    const name = sheetName.value.trim();
+    if (!name) { sheetMsg.textContent = 'Gib der Gewohnheit einen Namen.'; return; }
+    if (sheet.mode === 'days' && sheet.days.size === 0) { sheetMsg.textContent = 'Wähle mindestens einen Tag.'; return; }
+    const h = habits.find(x => x.id === sheet.id);
+    if (!h) { closeSheet(); return; }
+    h.name = name;
+    h.schedule = sheet.mode === 'days'
+      ? { type: 'days', days: Array.from(sheet.days).sort((a, b) => a - b) }
+      : { type: 'weekly', times: sheet.times };
+    render();
+    saveHabits();
+    closeSheet();
+  });
+
+  // ======================================================================
+  // 7) Datensicherung
+  // ======================================================================
 
   function setStatus(text, isError) {
     const el = document.getElementById('status');
@@ -487,7 +1023,7 @@
     setStatus('Sicherung gespeichert (' + habits.length + ' Gewohnheiten).', false);
   }
 
-  // Prüft, ob ein Eintrag aus einer Datei wie eine echte Gewohnheit aussieht.
+  // Prüft, ob ein Eintrag aus einer Datei (oder dem Speicher) wie eine echte Gewohnheit aussieht.
   // Dateien kommen von außen, deshalb vertrauen wir ihnen nicht blind:
   // Die ID landet später im HTML und darf nur Buchstaben und Ziffern enthalten.
   function isValidHabit(h) {
@@ -500,7 +1036,7 @@
 
   // Import: Die Daten aus der Datei werden mit den vorhandenen ZUSAMMENGEFÜHRT.
   // Nichts wird überschrieben oder gelöscht: neue Gewohnheiten kommen dazu,
-  // bei gleicher ID werden die erledigten Tage vereint.
+  // bei gleicher ID werden die erledigten Tage vereint (der Plan bleibt, wie er hier ist).
   async function importData(file) {
     try {
       const data = JSON.parse(await file.text());
@@ -518,7 +1054,8 @@
           habits.push({
             id: incoming.id,
             name: incoming.name.trim(),
-            createdAt: typeof incoming.createdAt === 'string' ? incoming.createdAt : todayStr(),
+            createdAt: typeof incoming.createdAt === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(incoming.createdAt) ? incoming.createdAt : todayStr(),
+            schedule: getSchedule(incoming),
             completions: Array.from(new Set(incoming.completions))
           });
           added++;
@@ -542,8 +1079,17 @@
     e.target.value = ''; // damit dieselbe Datei später erneut gewählt werden kann
   });
 
+  // ======================================================================
+  // 8) Start
+  // ======================================================================
+
   showTodayLabel();
   loadHabits();
+
+  // Wenn du die App über Nacht offen lässt und morgens zurückkehrst, soll sie den neuen Tag zeigen.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { showTodayLabel(); render(); }
+  });
 
   // Meldet den Service Worker (sw.js) beim Browser an, damit die App offline starten kann.
   // Das geht nur über https (oder localhost), nicht beim Öffnen der Datei per Doppelklick,
