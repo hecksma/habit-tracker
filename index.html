@@ -77,20 +77,20 @@
   .habit-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-top: 24px;
+    gap: 8px;
+    margin-top: 20px;
   }
 
-  /* ---- Karte einer Gewohnheit ---- */
+  /* ---- Karte einer Gewohnheit (kompakt) ---- */
 
   .habit-card {
     background: var(--bg-elevated);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px 14px 10px 16px;
+    border-radius: 12px;
+    padding: 8px 6px 4px 12px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 2px;
     transition: border-color 0.2s ease;
   }
 
@@ -99,18 +99,18 @@
   .habit-top {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
   }
 
   .check-btn {
     flex-shrink: 0;
-    width: 46px;
-    height: 46px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     border: 2px solid var(--ink-dim);
     background: transparent;
     color: var(--ink);
-    font-size: 20px;
+    font-size: 18px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -131,83 +131,85 @@
 
   .habit-name {
     font-family: 'Fraunces', serif;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 500;
-    margin: 0 0 3px;
+    margin: 0 0 1px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .streak-row {
+  /* Serie und Plan in einer Zeile */
+  .meta {
     display: flex;
     align-items: baseline;
-    gap: 5px;
+    gap: 8px;
     color: var(--ink-dim);
-    font-size: 13px;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
   }
+
+  .streak { flex-shrink: 0; }
 
   .streak-num {
     font-family: 'Fraunces', serif;
-    font-size: 15px;
+    font-size: 14px;
     color: var(--amber);
     font-weight: 600;
   }
 
   .plan {
-    margin: 2px 0 0;
-    font-size: 12px;
-    color: var(--ink-dim);
-    opacity: 0.8;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.85;
   }
 
-  .joker { color: var(--sage); opacity: 1; }
+  .joker { color: var(--sage); }
 
   .edit-btn {
     flex-shrink: 0;
     background: none;
     border: none;
     color: var(--ink-dim);
-    font-size: 22px;
+    font-size: 20px;
     line-height: 1;
     cursor: pointer;
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
   }
 
   .edit-btn:active { color: var(--ink); background: rgba(241, 239, 231, 0.06); }
 
-  /* ---- Wochenansicht ---- */
+  /* ---- Wochenansicht (kompakt) ---- */
 
   .week {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 2px;
-    border-top: 1px solid var(--border);
-    padding-top: 6px;
+    margin-right: 6px;
   }
 
   .day {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
+    gap: 1px;
     background: none;
     border: none;
-    padding: 4px 0;
-    min-height: 48px;
+    padding: 2px 0;
+    min-height: 38px;
     color: var(--ink-dim);
     cursor: pointer;
   }
 
-  .day-label { font-size: 11px; }
+  .day-label { font-size: 10.5px; }
 
   .day.today .day-label { color: var(--ink); font-weight: 600; }
 
   .dot {
-    width: 28px;
-    height: 28px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     border: 2px solid var(--ring);
     display: block;
@@ -222,9 +224,9 @@
 
   /* Kein geplanter Tag: nur ein kleiner Punkt, aber antippbar (Bonus) */
   .day.off:not(.checked) .dot {
-    width: 10px;
-    height: 10px;
-    margin: 9px;
+    width: 8px;
+    height: 8px;
+    margin: 7px;
     border: none;
     background: var(--ring);
   }
@@ -488,6 +490,129 @@
   .btn.danger { border-color: transparent; color: var(--danger); padding-left: 4px; padding-right: 4px; }
   .btn.danger.confirm { background: var(--danger); color: var(--bg); border-color: var(--danger); padding: 11px 16px; font-weight: 600; }
 
+  /* ---- Kopfzeile mit Einstellungen ---- */
+
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .icon-btn {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    margin: -2px -8px 0 0;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--ink-dim);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .icon-btn:active { color: var(--ink); background: rgba(241, 239, 231, 0.06); }
+
+  dialog h2:focus { outline: none; }
+
+  /* ---- Einstellungen ---- */
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .toggle-title { font-size: 15px; }
+
+  .switch {
+    flex-shrink: 0;
+    width: 52px;
+    height: 30px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    position: relative;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.15s ease;
+  }
+
+  .switch .knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--ink-dim);
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+
+  .switch[aria-checked="true"] { background: var(--sage); border-color: var(--sage); }
+  .switch[aria-checked="true"] .knob { transform: translateX(22px); background: var(--bg); }
+
+  .order-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .order-list li {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    height: 48px;
+    padding: 0 12px 0 4px;
+    position: relative;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: transform 0.12s ease;
+  }
+
+  .order-list li.dragging {
+    transition: none;
+    z-index: 2;
+    border-color: var(--sage);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  .order-list li.order-empty { color: var(--ink-dim); font-size: 14px; padding-left: 12px; }
+
+  .handle {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    background: none;
+    border: none;
+    color: var(--ink-dim);
+    cursor: grab;
+    touch-action: none; /* Wichtig: Das Ziehen soll nicht die Seite scrollen */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .order-name {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 15px;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; }
   }
@@ -496,8 +621,19 @@
 <body>
 
 <header>
-  <p class="eyebrow" id="todayLabel">Maximize</p>
-  <h1>Deine Gewohnheiten</h1>
+  <div class="header-row">
+    <div>
+      <p class="eyebrow" id="todayLabel">Maximize</p>
+      <h1>Deine Gewohnheiten</h1>
+    </div>
+    <button type="button" class="icon-btn" id="settingsBtn" aria-label="Einstellungen">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <path d="M4 7h9M17 7h3M4 17h3M11 17h9"/>
+        <circle cx="15" cy="7" r="2"/>
+        <circle cx="9" cy="17" r="2"/>
+      </svg>
+    </button>
+  </div>
   <p class="subtitle" id="subtitle">Lege unten deine erste Gewohnheit an.</p>
 </header>
 
@@ -524,7 +660,8 @@
      showModal() öffnet es und dunkelt den Rest ab, close() schließt es. -->
 <dialog id="sheet" aria-labelledby="sheetTitle">
   <form id="sheetForm">
-    <h2 id="sheetTitle">Gewohnheit bearbeiten</h2>
+    <!-- tabindex="-1" autofocus: Der Fokus startet auf der Überschrift statt im Namensfeld, damit sich die Tastatur nicht von selbst öffnet -->
+    <h2 id="sheetTitle" tabindex="-1" autofocus>Gewohnheit bearbeiten</h2>
 
     <div class="field">
       <label for="sheetName">Name</label>
@@ -556,14 +693,6 @@
 
     <p class="hint" id="planHint"></p>
 
-    <div class="field" style="margin-top: 18px;">
-      <span class="label">Reihenfolge in der Liste</span>
-      <div style="display: flex; gap: 8px;">
-        <button type="button" class="tool-btn" id="moveUp">Nach oben</button>
-        <button type="button" class="tool-btn" id="moveDown">Nach unten</button>
-      </div>
-    </div>
-
     <p class="sheet-msg" id="sheetMsg" role="alert"></p>
 
     <div class="sheet-actions">
@@ -573,6 +702,32 @@
       <button type="submit" class="btn primary">Speichern</button>
     </div>
   </form>
+</dialog>
+
+<!-- Einstellungen: Änderungen gelten sofort, es gibt nichts zu speichern -->
+<dialog id="settings" aria-labelledby="settingsTitle">
+  <h2 id="settingsTitle" tabindex="-1" autofocus>Einstellungen</h2>
+
+  <div class="field">
+    <div class="toggle-row">
+      <div>
+        <span class="toggle-title" id="weekSwitchLabel">Wochenansicht anzeigen</span>
+        <p class="hint" style="margin: 2px 0 0;">Aus: Die Karten werden noch kleiner, du kannst dann aber nur heute abhaken.</p>
+      </div>
+      <button type="button" role="switch" class="switch" id="weekSwitch" aria-checked="true" aria-labelledby="weekSwitchLabel"><span class="knob"></span></button>
+    </div>
+  </div>
+
+  <div class="field">
+    <span class="label">Reihenfolge der Gewohnheiten</span>
+    <p class="hint" style="margin: 0 0 10px;">Halte das Symbol links gedrückt und ziehe es nach oben oder unten.</p>
+    <ol class="order-list" id="orderList"></ol>
+  </div>
+
+  <div class="sheet-actions">
+    <span class="spacer"></span>
+    <button type="button" class="btn primary" id="settingsDone">Fertig</button>
+  </div>
 </dialog>
 
 <script>
@@ -615,10 +770,11 @@
     document.getElementById('todayLabel').textContent = text;
   }
 
+  // Macht Text für HTML unschädlich. Wichtig sind auch die Anführungszeichen:
+  // Namen landen teils in Attributen (z. B. aria-label="..."), und ein Namensbestandteil
+  // mit " könnte sonst aus dem Attribut ausbrechen.
   function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
   // ======================================================================
@@ -783,18 +939,22 @@
         + '<span class="day-label">' + DAY_LABELS[k] + '</span><span class="dot"></span></button>';
     }
 
+    // Name einmal maskieren und überall verwenden
+    const safeName = escapeHtml(h.name);
+
     return '<div class="habit-card ' + (isDone ? 'done' : '') + '">'
       + '<div class="habit-top">'
       +   '<button type="button" class="check-btn ' + (isDone ? 'done' : '') + '" data-action="toggle-day" data-id="' + h.id + '" data-date="' + today + '"'
-      +     ' aria-label="' + escapeHtml(h.name) + ' heute ' + (isDone ? 'zurücknehmen' : 'erledigen') + '">' + (isDone ? '✓' : '') + '</button>'
+      +     ' aria-label="' + safeName + ' heute ' + (isDone ? 'zurücknehmen' : 'erledigen') + '">' + (isDone ? '✓' : '') + '</button>'
       +   '<div class="habit-info">'
-      +     '<p class="habit-name">' + escapeHtml(h.name) + '</p>'
-      +     '<div class="streak-row"><span class="streak-num">' + streak.value + '</span><span>' + unitText + '</span></div>'
-      +     '<p class="plan">' + planText(h, today) + (streak.jokerUsed ? ' <span class="joker">Joker diese Woche genutzt</span>' : '') + '</p>'
+      +     '<p class="habit-name">' + safeName + '</p>'
+      +     '<div class="meta"><span class="streak"><span class="streak-num">' + streak.value + '</span> ' + unitText + '</span>'
+      +       '<span class="plan">' + planText(h, today) + '</span>'
+      +       (streak.jokerUsed ? '<span class="joker">Joker genutzt</span>' : '') + '</div>'
       +   '</div>'
-      +   '<button type="button" class="edit-btn" data-action="edit" data-id="' + h.id + '" aria-label="' + escapeHtml(h.name) + ' bearbeiten">⋯</button>'
+      +   '<button type="button" class="edit-btn" data-action="edit" data-id="' + h.id + '" aria-label="' + safeName + ' bearbeiten">⋯</button>'
       + '</div>'
-      + '<div class="week">' + cells + '</div>'
+      + (settings.showWeek ? '<div class="week">' + cells + '</div>' : '')
       + '</div>';
   }
 
@@ -901,6 +1061,8 @@
     sheetMsg.textContent = '';
     renderSheet();
     sheetEl.showModal();
+    // Fokus auf die Überschrift, nicht aufs Namensfeld: so öffnet sich keine Tastatur
+    document.getElementById('sheetTitle').focus({ preventScroll: true });
   }
 
   function renderSheet() {
@@ -915,9 +1077,6 @@
     document.getElementById('planHint').textContent = sheet.mode === 'days'
       ? 'Ein verpasster Tag pro Woche ist erlaubt (Joker). Beim zweiten verpassten Tag in einer Woche endet die Serie.'
       : 'Die Serie zählt Wochen, in denen du dein Ziel erreichst. Welche Tage du wählst, ist egal.';
-    const idx = habits.findIndex(h => h.id === sheet.id);
-    document.getElementById('moveUp').disabled = idx <= 0;
-    document.getElementById('moveDown').disabled = idx === habits.length - 1;
     deleteBtn.textContent = sheet.confirmDelete ? 'Wirklich löschen?' : 'Löschen';
     deleteBtn.classList.toggle('confirm', sheet.confirmDelete);
   }
@@ -945,19 +1104,6 @@
 
   document.getElementById('timesMinus').addEventListener('click', () => { if (sheet && sheet.times > 1) { sheet.times--; renderSheet(); } });
   document.getElementById('timesPlus').addEventListener('click', () => { if (sheet && sheet.times < 7) { sheet.times++; renderSheet(); } });
-
-  function moveHabit(direction) {
-    if (!sheet) return;
-    const i = habits.findIndex(h => h.id === sheet.id);
-    const j = i + direction;
-    if (i < 0 || j < 0 || j >= habits.length) return;
-    [habits[i], habits[j]] = [habits[j], habits[i]];
-    render();
-    saveHabits();
-    renderSheet();
-  }
-  document.getElementById('moveUp').addEventListener('click', () => moveHabit(-1));
-  document.getElementById('moveDown').addEventListener('click', () => moveHabit(1));
 
   // Löschen braucht zwei Klicks, damit nichts aus Versehen verschwindet
   deleteBtn.addEventListener('click', () => {
@@ -993,7 +1139,161 @@
   });
 
   // ======================================================================
-  // 7) Datensicherung
+  // 7) Einstellungen
+  // ======================================================================
+
+  // Einstellungen liegen getrennt von den Gewohnheiten im Speicher.
+  const SETTINGS_KEY = 'maximize-settings';
+  let settings = { showWeek: true };
+
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      if (parsed && typeof parsed.showWeek === 'boolean') settings.showWeek = parsed.showWeek;
+    } catch (e) { /* Standardwerte bleiben */ }
+  }
+
+  function saveSettings() {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* nicht kritisch */ }
+  }
+
+  const settingsEl = document.getElementById('settings');
+  const orderList = document.getElementById('orderList');
+  const weekSwitch = document.getElementById('weekSwitch');
+
+  const HANDLE_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14"/></svg>';
+
+  // Baut die Liste für die Reihenfolge. focusId: Welcher Griff soll danach den Fokus bekommen?
+  function renderOrderList(focusId) {
+    if (habits.length === 0) {
+      orderList.innerHTML = '<li class="order-empty">Noch keine Gewohnheiten.</li>';
+      return;
+    }
+    orderList.innerHTML = habits.map(h =>
+      '<li data-id="' + h.id + '">'
+      + '<button type="button" class="handle" aria-label="' + escapeHtml(h.name) + ' verschieben. Mit Pfeiltaste nach oben oder unten bewegen.">' + HANDLE_ICON + '</button>'
+      + '<span class="order-name">' + escapeHtml(h.name) + '</span></li>'
+    ).join('');
+    if (focusId) {
+      const handle = orderList.querySelector('li[data-id="' + focusId + '"] .handle');
+      if (handle) handle.focus();
+    }
+  }
+
+  function renderSettings() {
+    weekSwitch.setAttribute('aria-checked', String(settings.showWeek));
+    renderOrderList();
+  }
+
+  document.getElementById('settingsBtn').addEventListener('click', () => {
+    renderSettings();
+    settingsEl.showModal();
+    document.getElementById('settingsTitle').focus({ preventScroll: true });
+  });
+
+  document.getElementById('settingsDone').addEventListener('click', () => settingsEl.close());
+  settingsEl.addEventListener('click', (e) => { if (e.target === settingsEl) settingsEl.close(); });
+
+  weekSwitch.addEventListener('click', () => {
+    settings.showWeek = !settings.showWeek;
+    weekSwitch.setAttribute('aria-checked', String(settings.showWeek));
+    saveSettings();
+    render();
+  });
+
+  // --- Ziehen und Ablegen (Drag and drop) ---
+  // Wir benutzen "Pointer Events": Sie funktionieren mit Maus und Finger gleich.
+  // Beim Ziehen folgt die Zeile dem Finger (translateY). Die anderen Zeilen rücken
+  // um genau eine Zeilenhöhe zur Seite, damit eine Lücke entsteht. Erst beim Loslassen
+  // ändern wir die echte Reihenfolge in der Liste.
+  let drag = null;
+
+  function updateDrag() {
+    const d = drag;
+    const dy = (d.lastY - d.startY) + (settingsEl.scrollTop - d.startScroll);
+    d.target = Math.max(0, Math.min(d.items.length - 1, Math.round(d.index + dy / d.rowH)));
+    d.items.forEach((el, j) => {
+      if (el === d.li) { el.style.transform = 'translateY(' + dy + 'px)'; return; }
+      let shift = 0;
+      if (d.index < d.target && j > d.index && j <= d.target) shift = -d.rowH;
+      else if (d.index > d.target && j < d.index && j >= d.target) shift = d.rowH;
+      el.style.transform = shift ? 'translateY(' + shift + 'px)' : '';
+    });
+  }
+
+  // Läuft bei jedem Bildschirm-Update, solange gezogen wird.
+  // Nahe am oberen/unteren Rand scrollt das Fenster automatisch mit.
+  function dragLoop() {
+    if (!drag) return;
+    const r = settingsEl.getBoundingClientRect();
+    const edge = 48;
+    if (drag.lastY < r.top + edge) settingsEl.scrollTop -= 8;
+    else if (drag.lastY > r.bottom - edge) settingsEl.scrollTop += 8;
+    updateDrag();
+    drag.raf = requestAnimationFrame(dragLoop);
+  }
+
+  orderList.addEventListener('pointerdown', (e) => {
+    const handle = e.target.closest('.handle');
+    if (!handle || drag) return;
+    const li = handle.closest('li');
+    const items = Array.from(orderList.children);
+    const rowH = items.length > 1
+      ? items[1].getBoundingClientRect().top - items[0].getBoundingClientRect().top
+      : li.offsetHeight;
+    drag = {
+      li, items, rowH,
+      index: items.indexOf(li), target: items.indexOf(li),
+      startY: e.clientY, lastY: e.clientY,
+      startScroll: settingsEl.scrollTop,
+      pointerId: e.pointerId, raf: 0
+    };
+    handle.setPointerCapture(e.pointerId); // alle weiteren Bewegungen kommen weiter bei diesem Griff an
+    li.classList.add('dragging');
+    e.preventDefault();
+    dragLoop();
+  });
+
+  orderList.addEventListener('pointermove', (e) => {
+    if (drag && e.pointerId === drag.pointerId) drag.lastY = e.clientY;
+  });
+
+  function endDrag(e) {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    cancelAnimationFrame(drag.raf);
+    const { index, target, items, li } = drag;
+    items.forEach(el => { el.style.transform = ''; });
+    li.classList.remove('dragging');
+    drag = null;
+    if (target !== index) {
+      const [moved] = habits.splice(index, 1);
+      habits.splice(target, 0, moved);
+      saveHabits();
+      render();
+    }
+    renderOrderList();
+  }
+  orderList.addEventListener('pointerup', endDrag);
+  orderList.addEventListener('pointercancel', endDrag);
+
+  // Alternative ohne Maus/Finger: Griff mit Tab anwählen, dann Pfeil hoch/runter
+  orderList.addEventListener('keydown', (e) => {
+    const handle = e.target.closest('.handle');
+    if (!handle || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+    e.preventDefault();
+    const id = handle.closest('li').dataset.id;
+    const i = habits.findIndex(h => h.id === id);
+    const j = i + (e.key === 'ArrowUp' ? -1 : 1);
+    if (i < 0 || j < 0 || j >= habits.length) return;
+    [habits[i], habits[j]] = [habits[j], habits[i]];
+    saveHabits();
+    render();
+    renderOrderList(id);
+  });
+
+  // ======================================================================
+  // 8) Datensicherung
   // ======================================================================
 
   function setStatus(text, isError) {
@@ -1080,10 +1380,11 @@
   });
 
   // ======================================================================
-  // 8) Start
+  // 9) Start
   // ======================================================================
 
   showTodayLabel();
+  loadSettings();
   loadHabits();
 
   // Wenn du die App über Nacht offen lässt und morgens zurückkehrst, soll sie den neuen Tag zeigen.
