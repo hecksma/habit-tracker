@@ -122,7 +122,8 @@ function renderActive(el) {
     const ex = exById(en.exerciseId);
     const last = lastSets(en.exerciseId);
     html += '<div class="wk-ex"><div class="wk-ex-head" data-i="' + i + '"><button type="button" class="ex-link" data-act="open-ex" data-id="' + en.exerciseId + '">' + escapeHtml(ex ? ex.name : 'Übung') + '<span aria-hidden="true">›</span></button>'
-      + '<button type="button" class="x-btn" data-act="rm-ex" data-ex="' + i + '" aria-label="Übung entfernen">✕</button></div>'
+      + '<span class="head-tools">' + (active.entries.length > 1 ? '<span class="grip wk-grip" aria-label="Zum Umsortieren ziehen" role="img">' + GRIP_ICON + '</span>' : '')
+      + '<button type="button" class="x-btn" data-act="rm-ex" data-ex="' + i + '" aria-label="Übung entfernen">✕</button></span></div>'
       + '<div class="set-head"><span>Satz</span><span>Letztes Mal</span><span>kg</span><span>Wdh.</span><span></span></div>';
     en.sets.forEach((st, j) => {
       const prev = last[j] || last[last.length - 1];
@@ -701,32 +702,38 @@ document.getElementById('routineItems').addEventListener('pointerdown', (e) => {
 let holdTimer = null, holdStart = null;
 function cancelHold() { clearTimeout(holdTimer); holdTimer = null; }
 
+// Zeigt die kompakte Liste und lässt die Übung idx ziehen. Beim Loslassen klappt alles wieder auf.
+function enterReorder(idx) {
+  gymState.noClickUntil = Date.now() + 800;   // das Loslassen darf nichts öffnen
+  const scroll = window.scrollY;
+  gymState.reorder = true;
+  renderGym();
+  const row = document.querySelector('.reo-row[data-i="' + idx + '"]');
+  if (!row) { gymState.reorder = false; renderGym(); return; }
+  if (navigator.vibrate && settings.vibrate) { try { navigator.vibrate(15); } catch (err) { /* egal */ } }
+  startDrag(row, document.getElementById('reoList'), '.reo-row', (order) => {
+    const old = active.entries;
+    active.entries = order.map(i => old[i]);
+    gymState.reorder = false;
+    saveActive(); renderGym();
+    window.scrollTo(0, scroll);
+  });
+}
+
 document.getElementById('gymContent').addEventListener('pointerdown', (e) => {
   const head = e.target.closest('.wk-ex-head');
-  if (!head || !active || gymState.reorder || active.entries.length < 2 || e.target.closest('.x-btn')) return;
+  if (!head || !active || gymState.reorder || active.entries.length < 2) return;
   const idx = Number(head.dataset.i);
+  // Am Griff: sofort ziehen (der Griff blockiert das Scrollen, deshalb klappt es zuverlässig)
+  if (e.target.closest('.wk-grip')) { e.preventDefault(); cancelHold(); enterReorder(idx); return; }
+  if (e.target.closest('.x-btn')) return;
+  // Sonst: Namen gedrückt halten
   holdStart = { x: e.clientX, y: e.clientY };
   cancelHold();
-  holdTimer = setTimeout(() => {
-    holdTimer = null;
-    gymState.noClickUntil = Date.now() + 800;   // das Loslassen darf die Übung nicht öffnen
-    const scroll = window.scrollY;
-    gymState.reorder = true;
-    renderGym();
-    const row = document.querySelector('.reo-row[data-i="' + idx + '"]');
-    if (!row) { gymState.reorder = false; renderGym(); return; }
-    if (navigator.vibrate && settings.vibrate) { try { navigator.vibrate(15); } catch (err) { /* egal */ } }
-    startDrag(row, document.getElementById('reoList'), '.reo-row', (order) => {
-      const old = active.entries;
-      active.entries = order.map(i => old[i]);
-      gymState.reorder = false;
-      saveActive(); renderGym();
-      window.scrollTo(0, scroll);
-    });
-  }, 450);
+  holdTimer = setTimeout(() => { holdTimer = null; enterReorder(idx); }, 400);
 });
 document.addEventListener('pointermove', (e) => {
-  if (holdTimer && holdStart && Math.hypot(e.clientX - holdStart.x, e.clientY - holdStart.y) > 10) cancelHold();
+  if (holdTimer && holdStart && Math.hypot(e.clientX - holdStart.x, e.clientY - holdStart.y) > 16) cancelHold();
 });
 ['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, cancelHold));
 // Langes Drücken soll auf dem Handy kein Textmenü öffnen
