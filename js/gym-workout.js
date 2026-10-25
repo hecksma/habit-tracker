@@ -227,7 +227,7 @@ function beep() {
       partials.forEach(([ratio, vol, dur]) => {
         const osc = ctx.createOscillator(), gain = ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.value = 780 * ratio;
+        osc.frequency.value = 1050 * ratio;
         gain.gain.setValueAtTime(0.0001, t0 + d);
         gain.gain.exponentialRampToValueAtTime(0.32 * vol, t0 + d + 0.004);
         gain.gain.exponentialRampToValueAtTime(0.0001, t0 + d + dur);

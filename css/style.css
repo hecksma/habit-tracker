@@ -1000,3 +1000,27 @@ dialog h2:focus { outline: none; }
 .grp-bar { height: 8px; border-radius: 4px; background: rgba(var(--tint), 0.08); overflow: hidden; }
 .grp-bar span { display: block; height: 100%; background: var(--sage); border-radius: 4px; }
 .grp-num { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-dim); }
+
+/* Weicher Übergang der Farben beim Wechsel zwischen den Bereichen.
+   Damit Variablen überblendet werden können, muss der Browser wissen, dass sie Farben sind. */
+@property --bg { syntax: '<color>'; inherits: true; initial-value: #1C2B27; }
+@property --bg-elevated { syntax: '<color>'; inherits: true; initial-value: #223832; }
+@property --ink { syntax: '<color>'; inherits: true; initial-value: #F1EFE7; }
+@property --ink-dim { syntax: '<color>'; inherits: true; initial-value: #A9B8B2; }
+@property --amber { syntax: '<color>'; inherits: true; initial-value: #E8A33D; }
+@property --sage { syntax: '<color>'; inherits: true; initial-value: #7FA285; }
+@property --danger { syntax: '<color>'; inherits: true; initial-value: #C97A6D; }
+:root {
+  transition: --bg .35s ease, --bg-elevated .35s ease, --ink .35s ease, --ink-dim .35s ease,
+              --amber .35s ease, --sage .35s ease, --danger .35s ease;
+}
+
+/* Symbole der unteren Leiste in einem Oval; das aktive ist gefüllt */
+.tab-ico {
+  display: flex; align-items: center; justify-content: center;
+  width: 54px; height: 30px; border-radius: 999px;
+  border: 1.5px solid var(--border);
+  transition: background-color .2s, border-color .2s;
+}
+.tab[aria-current="page"] .tab-ico { border-color: var(--sage); background: rgba(var(--accent-rgb), 0.0); background-color: color-mix(in srgb, var(--sage) 22%, transparent); }
+.tab-ico svg { width: 22px; height: 22px; }
