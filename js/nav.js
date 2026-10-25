@@ -16,6 +16,24 @@ const VIEWS = {
   gym: { title: 'Gym' }
 };
 
+// Die Farbe der Statusleiste des Handys (meta theme-color) lässt sich nicht per CSS überblenden.
+// Deshalb rechnen wir die Zwischenfarben selbst aus, passend zur Dauer in style.css (0,4 s).
+let themeNow = [28, 43, 39], themeAnim = 0, themeFirst = true;
+function fadeThemeColor(to) {
+  const tc = document.getElementById('themeColor');
+  if (!tc) return;
+  const from = themeNow.slice(), t0 = performance.now(), D = themeFirst ? 1 : 400;
+  themeFirst = false; // beim Start ohne Überblendung
+  cancelAnimationFrame(themeAnim);
+  const step = (now) => {
+    const k = Math.min(1, (now - t0) / D);
+    themeNow = from.map((v, i) => Math.round(v + (to[i] - v) * k));
+    tc.content = 'rgb(' + themeNow.join(',') + ')';
+    if (k < 1) themeAnim = requestAnimationFrame(step);
+  };
+  themeAnim = requestAnimationFrame(step);
+}
+
 function setView(name) {
   if (!VIEWS[name]) name = 'habits';
   document.getElementById('viewTitle').textContent = VIEWS[name].title;
@@ -30,8 +48,7 @@ function setView(name) {
   currentView = name;
   // Jeder Bereich hat sein eigenes Farbschema (siehe :root[data-area] in style.css)
   document.documentElement.dataset.area = name;
-  const tc = document.getElementById('themeColor');
-  if (tc) tc.content = name === 'gym' ? '#171B2E' : '#1C2B27';
+  fadeThemeColor(name === 'gym' ? [23, 27, 46] : [28, 43, 39]);
   if (name !== 'gym' && typeof gymState !== 'undefined') gymState.page = 'home';
   updateChrome();
   if (name === 'gym') renderGym();

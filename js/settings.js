@@ -93,7 +93,7 @@ settingsEl.addEventListener('click', (e) => { if (e.target === settingsEl) setti
     sw.setAttribute('aria-checked', String(settings[key]));
     saveSettings();
     // Ein Klick ist eine Nutzeraktion: So darf die Seite danach Ton abspielen und vibrieren
-    if (settings[key] && key === 'sound') { prepareAudio(); beep(); }
+    if (settings[key] && key === 'sound') beep();
     if (settings[key] && key === 'vibrate' && navigator.vibrate) navigator.vibrate(120);
   });
 });

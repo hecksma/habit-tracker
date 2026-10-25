@@ -194,25 +194,37 @@ function ensureTicker() { if (!ticker) ticker = setInterval(tick, 250); }
 
 // Ein AudioContext darf erst nach einer Berührung Ton machen. Deshalb wird er beim ersten
 // Tippen (Training starten, Satz abhaken) vorbereitet und ruht danach, bis die Pause endet.
-function prepareAudio() {
+function ensureAudio() {
+  if (audioCtx) return audioCtx;
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    if (!audioCtx) audioCtx = new AC();
-    audioCtx.resume().then(() => audioCtx.suspend()).catch(() => {});
+    if (AC) audioCtx = new AC();
+  } catch (e) { /* ohne Ton geht es auch */ }
+  return audioCtx;
+}
+
+function prepareAudio() {
+  try {
+    if (!ensureAudio()) return;
+    // Aufwecken und kurz danach wieder ruhen lassen. Spielt in der Zwischenzeit ein Ton,
+    // übernimmt playSound und setzt die Ruhezeit neu (gemeinsamer Zeitgeber).
+    audioCtx.resume().then(() => scheduleSuspend(400)).catch(() => {});
   } catch (e) { /* ohne Ton geht es auch */ }
 }
 
 // Töne laufen über einen gemeinsamen Ablauf: Kontext wecken, Ton spielen, danach wieder ruhen
 // lassen, damit Musik und andere Apps nicht gestört werden.
 let suspendTimer = null;
+function scheduleSuspend(ms) {
+  clearTimeout(suspendTimer);
+  suspendTimer = setTimeout(() => { try { audioCtx.suspend(); } catch (e) { /* egal */ } }, ms);
+}
 function playSound(build, ms) {
-  if (!audioCtx) return;
+  if (!ensureAudio()) return;
   try {
     audioCtx.resume().then(() => {
       build(audioCtx, audioCtx.currentTime);
-      clearTimeout(suspendTimer);
-      suspendTimer = setTimeout(() => { try { audioCtx.suspend(); } catch (e) { /* egal */ } }, ms);
+      scheduleSuspend(ms);
     }).catch(() => {});
   } catch (e) { /* ohne Ton geht es auch */ }
 }
@@ -248,12 +260,12 @@ function playTick() {
     osc.frequency.setValueAtTime(1500, t0);
     osc.frequency.exponentialRampToValueAtTime(900, t0 + 0.05);
     gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.exponentialRampToValueAtTime(0.25, t0 + 0.004);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.07);
+    gain.gain.exponentialRampToValueAtTime(0.6, t0 + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.09);
     osc.connect(gain).connect(ctx.destination);
     osc.start(t0);
-    osc.stop(t0 + 0.08);
-  }, 300);
+    osc.stop(t0 + 0.1);
+  }, 400);
 }
 
 function alertRestOver() {
@@ -366,7 +378,6 @@ document.getElementById('gymContent').addEventListener('click', (e) => {
       // Nichts eingetippt? Dann gelten die Vorschläge vom letzten Mal
       if (!st.kg && st.pk) st.kg = st.pk;
       if (!st.reps && st.pr) st.reps = st.pr;
-      prepareAudio();
       playTick();
       const ex = exById(entry.exerciseId);
       startRest(ex && ex.rest ? ex.rest : 90);
