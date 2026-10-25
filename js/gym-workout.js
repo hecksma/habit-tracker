@@ -697,10 +697,8 @@ document.getElementById('routineItems').addEventListener('pointerdown', (e) => {
   });
 });
 
-// Im laufenden Training: den Kopf einer Übung gedrückt halten, dann zeigt die App alle Übungen
-// als kompakte Liste. Ziehen ändert die Reihenfolge, Loslassen klappt alles wieder auf.
-let holdTimer = null, holdStart = null;
-function cancelHold() { clearTimeout(holdTimer); holdTimer = null; }
+// Im laufenden Training: am Griff (sechs Punkte) einer Übung ziehen. Die App zeigt alle Übungen als
+// kompakte Liste. Ziehen ändert die Reihenfolge, Loslassen klappt alles wieder auf.
 
 // Zeigt die kompakte Liste und lässt die Übung idx ziehen. Beim Loslassen klappt alles wieder auf.
 function enterReorder(idx) {
@@ -725,17 +723,8 @@ document.getElementById('gymContent').addEventListener('pointerdown', (e) => {
   if (!head || !active || gymState.reorder || active.entries.length < 2) return;
   const idx = Number(head.dataset.i);
   // Am Griff: sofort ziehen (der Griff blockiert das Scrollen, deshalb klappt es zuverlässig)
-  if (e.target.closest('.wk-grip')) { e.preventDefault(); cancelHold(); enterReorder(idx); return; }
-  if (e.target.closest('.x-btn')) return;
-  // Sonst: Namen gedrückt halten
-  holdStart = { x: e.clientX, y: e.clientY };
-  cancelHold();
-  holdTimer = setTimeout(() => { holdTimer = null; enterReorder(idx); }, 400);
+  if (e.target.closest('.wk-grip')) { e.preventDefault(); enterReorder(idx); return; }
 });
-document.addEventListener('pointermove', (e) => {
-  if (holdTimer && holdStart && Math.hypot(e.clientX - holdStart.x, e.clientY - holdStart.y) > 16) cancelHold();
-});
-['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, cancelHold));
 // Langes Drücken soll auf dem Handy kein Textmenü öffnen
 document.getElementById('gymContent').addEventListener('contextmenu', (e) => { if (e.target.closest('.wk-ex-head, .reo-row')) e.preventDefault(); });
 

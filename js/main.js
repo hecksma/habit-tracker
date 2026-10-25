@@ -66,8 +66,37 @@ window.addEventListener('storage', (e) => {
 // Meldet den Service Worker (sw.js) beim Browser an, damit die App offline starten kann.
 // Das geht nur über https (oder localhost), nicht beim Öffnen der Datei per Doppelklick,
 // deshalb die Prüfung davor.
+//
+// Updates: Der Service Worker holt eine neue Version im Hintergrund. Sobald er übernommen hat,
+// zeigen wir oben "Neue Version verfügbar". Ein Tipp lädt die App neu. Das passiert nie von selbst,
+// damit dich ein Update nicht mitten im Training stört.
+let swReg = null;
 if ('serviceWorker' in navigator) {
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadController) document.getElementById('updateBar').hidden = false;
+  });
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js').then(reg => { swReg = reg; }).catch(() => {});
+  });
+  // Kommst du in die App zurück, nachsehen, ob es etwas Neues gibt
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && swReg) swReg.update().catch(() => {});
   });
 }
+document.getElementById('updateNow').addEventListener('click', () => location.reload());
+
+// Einstellungen: von Hand nach einem Update suchen
+document.getElementById('checkUpdate').addEventListener('click', async () => {
+  const info = document.getElementById('updateInfo');
+  info.textContent = 'Suche …';
+  try {
+    if (!swReg) swReg = await navigator.serviceWorker.getRegistration();
+    if (swReg) await swReg.update();
+    await new Promise(r => setTimeout(r, 2500)); // dem Service Worker Zeit zum Übernehmen geben
+    if (!document.getElementById('updateBar').hidden) { info.textContent = 'Neue Version gefunden.'; location.reload(); }
+    else info.textContent = 'Du hast die neueste Version (' + APP_VERSION + ').';
+  } catch (e) {
+    info.textContent = 'Keine Verbindung. Versuche es später noch einmal.';
+  }
+});
