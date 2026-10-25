@@ -1,2 +1,2 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Alle Textdateien mit LF-Zeilenenden speichern, auch unter Windows.
+* text=auto eol=lf
