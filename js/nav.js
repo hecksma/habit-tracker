@@ -81,8 +81,8 @@ window.addEventListener('popstate', () => {
     openDialogs.pop().close();
   }
   // 2) Unterseiten im Gym-Bereich
-  else if (currentView === 'gym' && !active && gymState.page === 'exercise') {
-    gymState.page = 'exercises'; renderGym(); window.scrollTo(0, 0);
+  else if (currentView === 'gym' && gymState.page === 'exercise') {
+    leaveExercise();
   }
   else if (currentView === 'gym' && !active && gymState.page === 'exercises') {
     gymState.page = 'home'; renderGym(); window.scrollTo(0, 0);

@@ -98,7 +98,7 @@ function renderActive(el) {
   active.entries.forEach((en, i) => {
     const ex = exById(en.exerciseId);
     const last = lastSets(en.exerciseId);
-    html += '<div class="wk-ex"><div class="wk-ex-head"><span class="log-ex-name">' + escapeHtml(ex ? ex.name : 'Übung') + '</span>'
+    html += '<div class="wk-ex"><div class="wk-ex-head"><button type="button" class="ex-link" data-act="open-ex" data-id="' + en.exerciseId + '">' + escapeHtml(ex ? ex.name : 'Übung') + '<span aria-hidden="true">›</span></button>'
       + '<button type="button" class="x-btn" data-act="rm-ex" data-ex="' + i + '" aria-label="Übung entfernen">✕</button></div>'
       + '<div class="set-head"><span>Satz</span><span>Letztes Mal</span><span>kg</span><span>Wdh.</span><span></span></div>';
     en.sets.forEach((st, j) => {
@@ -120,7 +120,7 @@ function renderActive(el) {
 }
 
 function updateActiveSubtitle() {
-  if (!active) return;
+  if (!active || gymState.page !== 'home') return; // auf einer Übungsseite steht dort deren Untertitel
   let done = 0, total = 0;
   active.entries.forEach(en => en.sets.forEach(st => { total++; if (st.done) done++; }));
   const sub = document.getElementById('gymSubtitle');
@@ -307,8 +307,8 @@ document.getElementById('gymContent').addEventListener('click', (e) => {
   else if (act === 'new-routine') openRoutineSheet(null);
   else if (act === 'edit-routine') openRoutineSheet(b.dataset.id);
   else if (act === 'group-filter') { gymState.exGroup = b.dataset.g; renderGym(); }
-  else if (act === 'open-ex') { gymState.page = 'exercise'; gymState.exId = b.dataset.id; gymState.exShown = 10; renderGym(); window.scrollTo(0, 0); }
-  else if (act === 'back') { gymState.page = 'exercises'; renderGym(); window.scrollTo(0, 0); }
+  else if (act === 'open-ex') openExercise(b.dataset.id);
+  else if (act === 'back') leaveExercise();
   else if (act === 'more-ex') { gymState.exShown = (gymState.exShown || 10) + 10; renderGym(); }
   else if (act === 'toggle-set' && entry && entry.sets[si]) {
     const st = entry.sets[si];

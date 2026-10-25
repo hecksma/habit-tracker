@@ -147,15 +147,23 @@ function barChart(items) {
   return '<div class="chart" role="img" aria-label="Balkendiagramm">' + items.map(it => {
     const has = it.planned > 0;
     const pct = has ? Math.round(100 * it.done / it.planned) : 0;
-    return '<div class="bar-col' + (has ? '' : ' empty') + '">'
+    const tip = it.tip ? ' data-tip="' + escapeHtml(it.tip) + '" tabindex="0" role="button" aria-label="' + escapeHtml(it.tip) + '"' : '';
+    return '<div class="bar-col' + (has ? '' : ' empty') + '"' + tip + '>'
       + '<span class="bar-val">' + (has ? pct : '–') + '</span>'
       + '<span class="bar-track"><span class="bar" style="height:' + (has ? Math.max(pct, 2) : 2) + '%"></span></span>'
       + '<span class="bar-label">' + it.label + '</span></div>';
   }).join('') + '</div>';
 }
 
+const DAY_LONG = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+
+// Text für die Infoblase: "Montag: 3 von 4 (75 %)"
+function barTip(prefix, done, planned) {
+  return prefix + ': ' + (planned > 0 ? done + ' von ' + planned + ' (' + Math.round(100 * done / planned) + ' %)' : 'nichts geplant');
+}
+
 function weekdayChart(byWeekday) {
-  return barChart(byWeekday.map((x, i) => ({ label: DAY_LABELS[i], planned: x.planned, done: x.done })));
+  return barChart(byWeekday.map((x, i) => ({ label: DAY_LABELS[i], planned: x.planned, done: x.done, tip: barTip(DAY_LONG[i], x.done, x.planned) })));
 }
 
 function longDate(str) {
@@ -253,7 +261,8 @@ function renderStats() {
 
   const trend = weeklyTrend(today, 12).map((w, i, arr) => ({
     label: (i % 3 === 2 || i === arr.length - 1) ? w.ws.getDate() + '.' + (w.ws.getMonth() + 1) + '.' : '',
-    planned: w.planned, done: w.done
+    planned: w.planned, done: w.done,
+    tip: barTip('Woche ab ' + w.ws.getDate() + '.' + (w.ws.getMonth() + 1) + '.', w.done, w.planned)
   }));
 
   statsEl.innerHTML = periodSeg + cards

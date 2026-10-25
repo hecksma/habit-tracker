@@ -12,7 +12,7 @@
 const STORAGE_KEY = 'maximize-habits';
 // Versionsnummer der App. Sie erscheint unten in den Einstellungen, damit du siehst,
 // ob ein Update angekommen ist. Bei jeder Veröffentlichung hier und in sw.js erhöhen.
-const APP_VERSION = '1.1.1';
+const APP_VERSION = '1.2.0';
 // Aufbau der gespeicherten Daten. Ändert sich der Aufbau einmal, erhöhst du diese Zahl
 // und schreibst in migrate() (siehe main.js), wie alte Daten umgewandelt werden.
 const SCHEMA_VERSION = 3;
@@ -84,3 +84,51 @@ function quarantine(key) {
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+
+// ======================================================================
+// Kleine Infoblase für Diagramme: Antippen eines Balkens oder Punkts zeigt den genauen Wert
+// ======================================================================
+
+const tipEl = document.createElement('div');
+tipEl.className = 'tip';
+tipEl.hidden = true;
+tipEl.setAttribute('role', 'status');
+document.body.appendChild(tipEl);
+let tipTimer = null;
+let tipMark = null; // das Element, das gerade hervorgehoben ist
+
+// Zeigt den Text über dem Punkt (x, y) in Bildschirm-Koordinaten, ohne den Rand zu überschreiten
+function showTip(text, x, y) {
+  tipEl.textContent = text;
+  tipEl.hidden = false;
+  const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+  tipEl.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, x - w / 2)) + 'px';
+  tipEl.style.top = Math.max(8, y - h - 10) + 'px';
+  clearTimeout(tipTimer);
+  tipTimer = setTimeout(hideTip, 4000);
+}
+
+function hideTip() {
+  tipEl.hidden = true;
+  clearTimeout(tipTimer);
+  if (tipMark) { tipMark.classList.remove('sel'); tipMark = null; }
+  document.querySelectorAll('.chart-svg circle.sel').forEach(c => c.classList.remove('sel'));
+}
+
+// Balken (HTML-Diagramme mit data-tip): antippen zeigt den Wert, erneutes Antippen blendet aus
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.chart-svg')) return; // die Liniendiagramme regeln das selbst
+  const bar = e.target.closest('.bar-col[data-tip]');
+  if (!bar) { hideTip(); return; }
+  const same = tipMark === bar && !tipEl.hidden;
+  hideTip();
+  if (same) return;
+  bar.classList.add('sel');
+  tipMark = bar;
+  const r = bar.getBoundingClientRect();
+  showTip(bar.dataset.tip, r.left + r.width / 2, r.top);
+});
+document.addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('.bar-col[data-tip]')) { e.preventDefault(); e.target.click(); }
+});
+window.addEventListener('scroll', hideTip, { passive: true });

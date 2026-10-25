@@ -64,7 +64,7 @@ function lastDone(routineId) {
 
 const PENCIL_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
 
-// Alle Sessions einer Übung, neueste zuerst: { date, sets, top } (top = schwerster Satz in kg)
+// Alle Sessions einer Übung, neueste zuerst: { date, name, sets, top, topReps } (top = schwerster Satz in kg)
 function exerciseSessions(exId) {
   const out = [];
   for (let i = gym.workouts.length - 1; i >= 0; i--) {
@@ -72,7 +72,10 @@ function exerciseSessions(exId) {
     const en = w.entries.find(x => x.exerciseId === exId);
     if (!en) continue;
     const kgs = en.sets.map(s => s.kg).filter(v => v !== null);
-    out.push({ date: w.date, sets: en.sets, top: kgs.length ? Math.max.apply(null, kgs) : null });
+    const top = kgs.length ? Math.max.apply(null, kgs) : null;
+    // Wiederholungen des schwersten Satzes (bei Gleichstand die höchste Zahl)
+    const reps = en.sets.filter(s => s.kg === top && s.reps !== null).map(s => s.reps);
+    out.push({ date: w.date, name: w.name, sets: en.sets, top, topReps: reps.length ? Math.max.apply(null, reps) : null });
   }
   return out;
 }
@@ -82,9 +85,10 @@ const shortDate = d => parseDate(d.slice(0, 10)).toLocaleDateString('de-DE', { d
 function renderGym() {
   const el = document.getElementById('gymContent');
   updateGymNav();
-  if (active) { renderActive(el); updateActiveSubtitle(); updateRestBar(); return; }
-  if (gymState.page === 'exercises') { renderExercisesPage(el); return; }
+  // Eine Übungsseite kann auch während eines Trainings geöffnet sein (Tipp auf den Übungsnamen)
   if (gymState.page === 'exercise' && exById(gymState.exId)) { renderExerciseDetail(el); return; }
+  if (active) { gymState.page = 'home'; renderActive(el); updateActiveSubtitle(); updateRestBar(); return; }
+  if (gymState.page === 'exercises') { renderExercisesPage(el); return; }
   gymState.page = 'home';
 
   const sub = document.getElementById('gymSubtitle');
@@ -159,21 +163,80 @@ function renderExercisesPage(el) {
     + '<div id="exList">' + exercisesListHtml() + '</div>';
 }
 
+// Liniendiagramm. points: Sessions (älteste zuerst) mit { date, name, top, topReps }.
+// Antippen oder Darüberwischen zeigt den genauen Wert (siehe Block "Diagramm antippen" unten).
 function chartSvg(points) {
-  // points: Gewicht je Session, älteste zuerst
-  const W = 320, H = 110, L = 34, R = 8, T = 10, B = 18;
-  const min = Math.min.apply(null, points), max = Math.max.apply(null, points);
+  const W = 320, H = 118, L = 34, R = 10, T = 10, B = 26;
+  const vals = points.map(p => p.top);
+  const min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
   const lo = min === max ? min - 1 : min, hi = min === max ? max + 1 : max;
-  const x = i => points.length === 1 ? (L + W - R) / 2 : L + i * (W - L - R) / (points.length - 1);
+  const n = points.length;
+  const x = i => n === 1 ? (L + W - R) / 2 : L + i * (W - L - R) / (n - 1);
   const y = v => T + (hi - v) * (H - T - B) / (hi - lo);
-  const pts = points.map((v, i) => x(i).toFixed(1) + ',' + y(v).toFixed(1)).join(' ');
-  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Schwerster Satz der letzten Sessions in kg">'
+  const pts = points.map((p, i) => x(i).toFixed(1) + ',' + y(p.top).toFixed(1)).join(' ');
+  // Beschriftung der Achse: Datum (Tag.Monat.) unter jedem 1., 2. oder 3. Punkt, je nach Anzahl,
+  // vom neuesten Punkt aus gezählt, damit nichts übereinanderliegt
+  const every = n <= 6 ? 1 : n <= 9 ? 2 : 3;
+  const labels = points.map((p, i) => {
+    if ((n - 1 - i) % every !== 0) return '';
+    const d = parseDate(p.date.slice(0, 10));
+    return '<text x="' + x(i).toFixed(1) + '" y="' + (H - 8) + '" fill="var(--ink-dim)" font-size="9.5" text-anchor="middle">' + d.getDate() + '.' + (d.getMonth() + 1) + '.</text>';
+  }).join('');
+  return '<svg class="chart-svg" viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Schwerster Satz der letzten Sessions in kg. Antippen zeigt Werte.">'
     + '<text x="0" y="' + (T + 4) + '" fill="var(--ink-dim)" font-size="10">' + numText(hi) + '</text>'
     + '<text x="0" y="' + (H - B + 4) + '" fill="var(--ink-dim)" font-size="10">' + numText(lo) + '</text>'
     + '<line x1="' + L + '" y1="' + (H - B) + '" x2="' + (W - R) + '" y2="' + (H - B) + '" stroke="var(--border)"/>'
+    + labels
     + '<polyline points="' + pts + '" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
-    + points.map((v, i) => '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="3" fill="var(--amber)"/>').join('')
+    + points.map((p, i) => {
+      const tip = shortDate(p.date) + ' · ' + p.name + ' · ' + numText(p.top) + ' kg' + (p.topReps !== null ? ' × ' + p.topReps : '');
+      return '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(p.top).toFixed(1) + '" r="3" fill="var(--amber)" data-tip="' + escapeHtml(tip) + '"/>';
+    }).join('')
     + '</svg>';
+}
+
+// ---- Diagramm antippen ----
+// Beim Tippen oder Wischen über ein Liniendiagramm wird der nächstliegende Punkt hervorgehoben
+// und sein Wert in einer Infoblase gezeigt (showTip steht in core.js).
+let scrubbing = null;
+
+function selectChartPoint(svg, clientX) {
+  const rect = svg.getBoundingClientRect();
+  const k = rect.width / 320; // das Diagramm ist skaliert: viewBox-Breite 320
+  let best = null, bestDist = Infinity;
+  svg.querySelectorAll('circle[data-tip]').forEach(c => {
+    const d = Math.abs(rect.left + Number(c.getAttribute('cx')) * k - clientX);
+    if (d < bestDist) { bestDist = d; best = c; }
+  });
+  if (!best) return;
+  svg.querySelectorAll('circle.sel').forEach(c => c.classList.remove('sel'));
+  best.classList.add('sel');
+  showTip(best.dataset.tip, rect.left + Number(best.getAttribute('cx')) * k, rect.top + Number(best.getAttribute('cy')) * k - 4);
+}
+
+document.addEventListener('pointerdown', (e) => {
+  const svg = e.target.closest && e.target.closest('.chart-svg');
+  if (!svg) return;
+  scrubbing = svg;
+  selectChartPoint(svg, e.clientX);
+});
+document.addEventListener('pointermove', (e) => { if (scrubbing) selectChartPoint(scrubbing, e.clientX); });
+['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, () => { scrubbing = null; }));
+
+// Zurück von einer Übungsseite: ins Training (falls eines läuft) oder zur Übungsliste, an der alten Scroll-Position
+function leaveExercise() {
+  gymState.page = active ? 'home' : 'exercises';
+  renderGym();
+  window.scrollTo(0, gymState.backScroll || 0);
+}
+
+function openExercise(id) {
+  gymState.backScroll = window.scrollY;
+  gymState.page = 'exercise';
+  gymState.exId = id;
+  gymState.exShown = 10;
+  renderGym();
+  window.scrollTo(0, 0);
 }
 
 function renderExerciseDetail(el) {
@@ -183,7 +246,7 @@ function renderExerciseDetail(el) {
   const tops = sessions.filter(s => s.top !== null);
   const best = tops.length ? tops.reduce((a, b) => (b.top > a.top ? b : a)) : null;
   let html = '<div class="start-row" style="justify-content:space-between;margin-top:18px;">'
-    + '<button type="button" class="tool-btn" data-act="back">‹ Übungen</button>'
+    + '<button type="button" class="tool-btn" data-act="back">' + (active ? '‹ Training' : '‹ Übungen') + '</button>'
     + '<button type="button" class="tool-btn" data-act="edit-ex" data-id="' + ex.id + '">Bearbeiten</button></div>'
     + '<div class="stats-title" style="margin-top:16px;margin-bottom:2px;">' + escapeHtml(ex.name) + '</div>'
     + '<p class="routine-last" style="margin:0 0 12px;">' + (ex.group || 'Keine Muskelgruppe') + (ex.rest ? ' · Pause ' + clock(ex.rest * 1000) : '') + '</p>'
@@ -192,7 +255,7 @@ function renderExerciseDetail(el) {
     + '<div class="stat-card"><div class="stat-value">' + (tops[0] ? numText(tops[0].top) + ' kg' : '–') + '</div><div class="stat-label">Zuletzt</div><div class="stat-sub">' + (sessions[0] ? shortDate(sessions[0].date) : 'noch nie trainiert') + '</div></div>'
     + '</div>';
   if (tops.length >= 2) {
-    html += '<div class="stats-title">Verlauf (schwerster Satz)</div>' + chartSvg(tops.slice(0, 12).reverse().map(s => s.top));
+    html += '<div class="stats-title">Verlauf (schwerster Satz)</div><p class="stats-note" style="margin:-6px 2px 8px;">Tippe auf das Diagramm, um die Werte zu sehen.</p>' + chartSvg(tops.slice(0, 12).reverse());
   }
   if (sessions.length) {
     html += '<div class="stats-title">Letzte Sessions</div>' + sessions.slice(0, gymState.exShown || 10).map(s =>
