@@ -283,9 +283,9 @@ function openSheet(id) {
     mode: s.type,
     days: new Set(s.type === 'days' ? s.days : ALL_DAYS),
     times: s.type === 'weekly' ? s.times : 3,
-    confirmDelete: false
   };
   sheetName.value = h.name;
+  disarm(deleteBtn);
   sheetMsg.textContent = '';
   renderSheet();
   sheetEl.showModal();
@@ -305,8 +305,6 @@ function renderSheet() {
   document.getElementById('planHint').textContent = sheet.mode === 'days'
     ? 'Ein verpasster Tag pro Woche ist erlaubt (Joker). Beim zweiten verpassten Tag in einer Woche endet die Serie.'
     : 'Die Serie zählt Wochen, in denen du dein Ziel erreichst. Welche Tage du wählst, ist egal.';
-  deleteBtn.textContent = sheet.confirmDelete ? 'Wirklich löschen?' : 'Löschen';
-  deleteBtn.classList.toggle('confirm', sheet.confirmDelete);
 }
 
 function closeSheet() {
@@ -336,7 +334,7 @@ document.getElementById('timesPlus').addEventListener('click', () => { if (sheet
 // Löschen braucht zwei Klicks, damit nichts aus Versehen verschwindet
 deleteBtn.addEventListener('click', () => {
   if (!sheet) return;
-  if (!sheet.confirmDelete) { sheet.confirmDelete = true; renderSheet(); return; }
+  if (!twoStep(deleteBtn, 'Wirklich löschen?')) return;
   habits = habits.filter(h => h.id !== sheet.id);
   render();
   saveHabits();

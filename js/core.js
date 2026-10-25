@@ -12,7 +12,7 @@
 const STORAGE_KEY = 'maximize-habits';
 // Versionsnummer der App. Sie erscheint unten in den Einstellungen, damit du siehst,
 // ob ein Update angekommen ist. Bei jeder Veröffentlichung hier und in sw.js erhöhen.
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.1';
 // Aufbau der gespeicherten Daten. Ändert sich der Aufbau einmal, erhöhst du diese Zahl
 // und schreibst in migrate() (siehe main.js), wie alte Daten umgewandelt werden.
 const SCHEMA_VERSION = 3;
@@ -132,3 +132,27 @@ document.addEventListener('keydown', (e) => {
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('.bar-col[data-tip]')) { e.preventDefault(); e.target.click(); }
 });
 window.addEventListener('scroll', hideTip, { passive: true });
+
+// ======================================================================
+// Zwei-Schritt-Bestätigung für Löschen, Verwerfen und Entfernen
+// ======================================================================
+// Überall in der App gleich: Der erste Tipp färbt den Knopf rot und ändert den Text
+// (z. B. "Wirklich löschen?"). Erst der zweite Tipp führt die Aktion aus.
+// Nach 4 Sekunden ohne zweiten Tipp springt der Knopf zurück.
+function twoStep(btn, confirmLabel) {
+  if (btn.dataset.armed === '1') { disarm(btn); return true; }
+  btn.dataset.armed = '1';
+  btn.dataset.label = btn.textContent;
+  btn.textContent = confirmLabel;
+  btn.classList.add('confirm');
+  btn._armTimer = setTimeout(() => disarm(btn), 4000);
+  return false;
+}
+
+function disarm(btn) {
+  if (btn.dataset.armed !== '1') return;
+  clearTimeout(btn._armTimer);
+  btn.dataset.armed = '';
+  btn.textContent = btn.dataset.label;
+  btn.classList.remove('confirm');
+}

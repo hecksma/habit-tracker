@@ -19,7 +19,6 @@ const ACTIVE_KEY = 'maximize-gym-active';
 let active = null;
 let restAlerted = true;
 let lastBuzz = null;       // Welche Countdown-Sekunde hat zuletzt vibriert?
-let armed = null;          // Zwei-Schritt-Bestätigung ("Wirklich verwerfen?")
 let ticker = null;
 let audioCtx = null;
 let wakeLock = null;
@@ -236,15 +235,6 @@ document.addEventListener('visibilitychange', () => {
 
 // ---- Training beenden / verwerfen ----
 
-// Der erste Tipp ändert nur die Beschriftung, erst der zweite führt die Aktion aus.
-function confirmTap(key, btn, label) {
-  if (armed === key) { armed = null; return true; }
-  armed = key;
-  btn.textContent = label;
-  setTimeout(() => { if (armed === key) { armed = null; if (active) renderGym(); } }, 4000);
-  return false;
-}
-
 function endWorkout() {
   active = null; saveActive(); releaseScreen(); restAlerted = true;
   renderGym(); updateRestBar();
@@ -327,14 +317,14 @@ document.getElementById('gymContent').addEventListener('click', (e) => {
   }
   else if (act === 'del-set' && entry && entry.sets.length > 1) { entry.sets.pop(); saveActive(); renderGym(); }
   else if (act === 'rm-ex' && entry) {
-    if (entry.sets.some(s => s.done) && !confirmTap('rm' + ei, b, 'Entfernen?')) return;
+    if (entry.sets.some(s => s.done) && !twoStep(b, 'Entfernen?')) return;
     active.entries.splice(ei, 1); saveActive(); renderGym();
   }
   else if (act === 'add-ex') openPick();
-  else if (act === 'discard') { if (confirmTap('discard', b, 'Wirklich verwerfen?')) endWorkout(); }
+  else if (act === 'discard') { if (twoStep(b, 'Wirklich verwerfen?')) endWorkout(); }
   else if (act === 'finish') {
     if (!active.entries.some(en => en.sets.some(s => s.done))) {
-      if (confirmTap('finish', b, 'Nichts abgehakt. Verwerfen?')) endWorkout();
+      if (twoStep(b, 'Nichts abgehakt. Verwerfen?')) endWorkout();
       return;
     }
     // Hast du gegenüber der Routine Übungen oder Satzzahlen geändert? Dann nachfragen.
@@ -507,7 +497,8 @@ function openRoutineSheet(id) {
   document.getElementById('routineName').value = r ? r.name : '';
   document.getElementById('routineMsg').textContent = '';
   const del = document.getElementById('routineDelete');
-  del.hidden = !r; del.textContent = 'Löschen'; del.dataset.armed = '';
+  disarm(del);
+  del.hidden = !r;
   renderRoutineItems();
   routineSheet.showModal();
   document.getElementById('routineTitle').focus({ preventScroll: true });
@@ -531,11 +522,7 @@ document.getElementById('routineAddEx').addEventListener('click', () => {
 
 document.getElementById('routineDelete').addEventListener('click', (e) => {
   const b = e.currentTarget;
-  if (b.dataset.armed !== '1') {
-    b.dataset.armed = '1'; b.textContent = 'Wirklich löschen?';
-    setTimeout(() => { b.dataset.armed = ''; b.textContent = 'Löschen'; }, 4000);
-    return;
-  }
+  if (!twoStep(b, 'Wirklich löschen?')) return;
   const before = JSON.stringify(gym);
   gym.routines = gym.routines.filter(r => r.id !== rCtx.id);
   if (!saveGym()) { gym = JSON.parse(before); document.getElementById('routineMsg').textContent = 'Der Speicher ist voll.'; return; }

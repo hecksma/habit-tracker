@@ -37,7 +37,12 @@ function setView(name) {
 
 document.querySelector('.tabbar').addEventListener('click', (e) => {
   const tab = e.target.closest('.tab');
-  if (tab) setView(tab.dataset.view);
+  if (!tab) return;
+  // Ein Tipp auf das Symbol bringt immer zum ersten Bildschirm des Bereichs,
+  // auch wenn man schon im Bereich ist (z. B. in einer Übung oder in der Statistik).
+  if (tab.dataset.view === 'gym') gymState.page = 'home';
+  if (tab.dataset.view === 'habits') setHabitsTab('today');
+  setView(tab.dataset.view);
 });
 
 // ======================================================================
