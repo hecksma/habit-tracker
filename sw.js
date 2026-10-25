@@ -4,7 +4,7 @@
 
 // Name des Zwischenspeichers. Bei einer neuen Veröffentlichung die Zahl erhöhen (v3, v4 ...),
 // dann wird beim nächsten Besuch ein neuer Speicher angelegt und der alte gelöscht.
-const CACHE = 'maximize-v7';
+const CACHE = 'maximize-v8';
 
 // Alle Dateien, die die App zum Starten braucht. Kommt eine neue Datei dazu, hier eintragen.
 const APP_FILES = [
@@ -21,7 +21,7 @@ const NETWORK_TIMEOUT_MS = 3500;
 
 // 1) Installation: beim ersten Besuch alle App-Dateien in den Cache legen.
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(APP_FILES)));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(APP_FILES.map((u) => new Request(u, { cache: 'reload' })))));
   self.skipWaiting(); // neue Version sofort aktivieren, nicht erst nach dem Schließen der App
 });
 
@@ -44,7 +44,7 @@ const cacheable = (res) => res && (res.ok || res.type === 'opaque');
 async function networkFirst(request, event) {
   const cached = await caches.match(request, { ignoreSearch: true });
 
-  const network = fetch(request).then((res) => {
+  const network = fetch(request, { cache: 'no-cache' }).then((res) => {
     if (cacheable(res)) {
       const copy = res.clone(); // eine Kopie für den Cache, das Original geht an die App
       caches.open(CACHE).then((cache) => cache.put(request, copy));
