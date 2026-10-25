@@ -138,12 +138,13 @@ function updateGymNav() {
 
 function exercisesListHtml() {
   const q = (gymState.exFilter || '').trim().toLowerCase();
-  const list = gym.exercises.filter(e => e.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  const g = gymState.exGroup;
+  const list = gym.exercises.filter(e => e.name.toLowerCase().includes(q) && (!g || e.group === g)).sort((a, b) => a.name.localeCompare(b.name, 'de'));
   if (!list.length) return '<p class="hint">' + (gym.exercises.length ? 'Nichts gefunden.' : 'Noch keine Übungen. Lege deine erste an.') + '</p>';
   return list.map(e => {
     const last = exerciseSessions(e.id)[0];
-    return '<button type="button" class="ex-row" data-act="open-ex" data-id="' + e.id + '"><span>' + escapeHtml(e.name)
-      + '</span><span>' + (last && last.top !== null ? numText(last.top) + ' kg' : '–') + '</span></button>';
+    return '<button type="button" class="ex-row" data-act="open-ex" data-id="' + e.id + '"><span><span class="ex-name">' + escapeHtml(e.name) + '</span>'
+      + (e.group ? '<span class="log-sub">' + e.group + '</span>' : '') + '</span><span>' + (last && last.top !== null ? numText(last.top) + ' kg' : '–') + '</span></button>';
   }).join('');
 }
 
@@ -152,6 +153,9 @@ function renderExercisesPage(el) {
   el.innerHTML = '<div class="stats-title" style="margin-top:20px;">Übungen</div>'
     + '<div class="action-row" style="margin-top:0;"><button type="button" class="tool-btn" data-act="new-ex">+ Neue Übung</button></div>'
     + '<input type="search" id="exFilter" class="text-input" placeholder="Übung suchen" aria-label="Übung suchen" value="' + escapeHtml(gymState.exFilter || '') + '" style="margin:0 0 6px;" />'
+    + '<div class="chips wrap" id="exGroupFilter" role="group" aria-label="Muskelgruppe filtern" style="margin:6px 0 10px;">'
+    + ['', ...MUSCLE_GROUPS].map(g => '<button type="button" class="chip" data-act="group-filter" data-g="' + g + '" aria-pressed="' + ((gymState.exGroup || '') === g) + '">' + (g || 'Alle') + '</button>').join('')
+    + '</div>'
     + '<div id="exList">' + exercisesListHtml() + '</div>';
 }
 
@@ -181,7 +185,8 @@ function renderExerciseDetail(el) {
   let html = '<div class="start-row" style="justify-content:space-between;margin-top:18px;">'
     + '<button type="button" class="tool-btn" data-act="back">‹ Übungen</button>'
     + '<button type="button" class="tool-btn" data-act="edit-ex" data-id="' + ex.id + '">Bearbeiten</button></div>'
-    + '<div class="stats-title" style="margin-top:16px;">' + escapeHtml(ex.name) + '</div>'
+    + '<div class="stats-title" style="margin-top:16px;margin-bottom:2px;">' + escapeHtml(ex.name) + '</div>'
+    + '<p class="routine-last" style="margin:0 0 12px;">' + (ex.group || 'Keine Muskelgruppe') + (ex.rest ? ' · Pause ' + clock(ex.rest * 1000) : '') + '</p>'
     + '<div class="stat-grid">'
     + '<div class="stat-card"><div class="stat-value">' + (best ? numText(best.top) + ' kg' : '–') + '</div><div class="stat-label">Bestes Gewicht</div><div class="stat-sub">' + (best ? shortDate(best.date) : 'noch keine Daten') + '</div></div>'
     + '<div class="stat-card"><div class="stat-value">' + (tops[0] ? numText(tops[0].top) + ' kg' : '–') + '</div><div class="stat-label">Zuletzt</div><div class="stat-sub">' + (sessions[0] ? shortDate(sessions[0].date) : 'noch nie trainiert') + '</div></div>'

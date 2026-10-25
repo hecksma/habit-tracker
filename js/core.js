@@ -12,10 +12,10 @@
 const STORAGE_KEY = 'maximize-habits';
 // Versionsnummer der App. Sie erscheint unten in den Einstellungen, damit du siehst,
 // ob ein Update angekommen ist. Bei jeder Veröffentlichung hier und in sw.js erhöhen.
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.1';
 // Aufbau der gespeicherten Daten. Ändert sich der Aufbau einmal, erhöhst du diese Zahl
 // und schreibst in migrate() (siehe main.js), wie alte Daten umgewandelt werden.
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 3;
 const SCHEMA_KEY = 'maximize-schema';
 // Alter Speicherort aus der Zeit, als die App noch anders hieß.
 // Wir lesen ihn weiter, damit bestehende Daten nicht verloren gehen.

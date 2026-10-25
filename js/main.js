@@ -14,6 +14,22 @@ function migrate() {
   let v = 0;
   try { v = Number(localStorage.getItem(SCHEMA_KEY)) || 0; } catch (e) { return; }
   // v < 1: Ausgangsaufbau, nichts umzuwandeln
+  if (v < 3) {
+    // Version 3: Gruppe "Cardio" ergänzt. Übungen ohne Gruppe bekommen sie, wenn ihr Name bekannt ist.
+    const g3 = readJson(GYM_KEY);
+    if (g3 && Array.isArray(g3.exercises)) {
+      g3.exercises.forEach(e => { if (e && typeof e.name === 'string' && !e.group) e.group = groupOf(e.name); });
+      try { localStorage.setItem(GYM_KEY, JSON.stringify(g3)); } catch (e) { return; }
+    }
+  }
+  if (v < 2) {
+    // Version 2: Übungen bekommen eine Muskelgruppe. Bekannte Namen werden zugeordnet, der Rest bleibt leer.
+    const g = readJson(GYM_KEY);
+    if (g && Array.isArray(g.exercises)) {
+      g.exercises.forEach(e => { if (e && typeof e.name === 'string' && !('group' in e)) e.group = groupOf(e.name); });
+      try { localStorage.setItem(GYM_KEY, JSON.stringify(g)); } catch (e) { return; }
+    }
+  }
   if (v !== SCHEMA_VERSION) {
     try { localStorage.setItem(SCHEMA_KEY, String(SCHEMA_VERSION)); } catch (e) { /* nicht kritisch */ }
   }

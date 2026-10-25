@@ -9,7 +9,7 @@
 // ======================================================================
 //
 // So sind die Gym-Daten aufgebaut (wie drei verknüpfte Tabellen):
-//   exercises: Übungen,  { id, name, rest }                       rest = Standard-Pause in Sekunden
+//   exercises: Übungen,  { id, name, rest, group }                rest = Standard-Pause in Sekunden, group = Muskelgruppe
 //   routines:  Routinen, { id, name, items: [{ exerciseId, sets }] }
 //   workouts:  Trainings, { id, date, name, routineId, durationSec,
 //                           entries: [{ exerciseId, sets: [{ kg, reps, sec, dist }] }] }
@@ -19,7 +19,98 @@
 
 const GYM_KEY = 'maximize-gym';
 let gym = { exercises: [], routines: [], workouts: [] };
-const gymState = { shown: 20, page: 'home', exId: null, exFilter: '', exShown: 10 };
+const gymState = { shown: 20, page: 'home', exId: null, exFilter: '', exGroup: '', exShown: 10 };
+
+// Muskelgruppen: Jede Übung hat genau eine (oder keine). Cardio gilt hier auch als Gruppe.
+const MUSCLE_GROUPS = ['Brust', 'Rücken', 'Schultern', 'Bizeps', 'Trizeps', 'Arme', 'Quadrizeps', 'Beinbeuger', 'Beine', 'Bauch', 'Cardio'];
+
+// Zuordnung bekannter Übungsnamen (klein geschrieben) zu ihrer Gruppe.
+// Sie wird beim CSV-Import und einmalig für bereits vorhandene Übungen benutzt.
+const GROUP_BY_NAME = {
+  "bench press (barbell)": "Brust",
+  "bench press (dumbbell)": "Brust",
+  "bench press iso": "Brust",
+  "cable crossover": "Brust",
+  "chest dip": "Brust",
+  "chest fly": "Brust",
+  "chest press (machine)": "Brust",
+  "horizontal chest fly": "Brust",
+  "incline bench press (dumbbell)": "Brust",
+  "incline bench press (smith machine)": "Brust",
+  "incline chest press (machine)": "Brust",
+  "iso-lateral chest press (machine)": "Brust",
+  "back extension": "Rücken",
+  "cable pullover": "Rücken",
+  "deadlift (barbell)": "Rücken",
+  "iso-lateral row (machine)": "Rücken",
+  "iso-lateral row (cable)": "Rücken",
+  "lat pulldown (cable)": "Rücken",
+  "lat pulldown (single arm)": "Rücken",
+  "lat pulldown close grip": "Rücken",
+  "pull up (assisted)": "Rücken",
+  "pull up (band)": "Rücken",
+  "seated row (cable)": "Rücken",
+  "seated row wide grip iso": "Rücken",
+  "seated wide-grip row (cable)": "Rücken",
+  "seated wide-grip row machine": "Rücken",
+  "seated wide grip row high plate loaded": "Rücken",
+  "seated wide grip row machine high": "Rücken",
+  "t bar row": "Rücken",
+  "face pull (cable)": "Schultern",
+  "lateral raise (cable)": "Schultern",
+  "lateral raise (dumbbell)": "Schultern",
+  "lateral raise (machine)": "Schultern",
+  "overhead press (dumbbell)": "Schultern",
+  "overhead press (smith machine)": "Schultern",
+  "reverse fly (cable)": "Schultern",
+  "reverse fly (dumbbell)": "Schultern",
+  "reverse fly (machine)": "Schultern",
+  "seated overhead press (dumbbell)": "Schultern",
+  "seated overhead press (machine)": "Schultern",
+  "shoulder press (machine)": "Schultern",
+  "shoulder press (plate loaded)": "Schultern",
+  "y raises": "Schultern",
+  "bicep curl (barbell)": "Bizeps",
+  "bicep curl (cable)": "Bizeps",
+  "bicep curl (dumbbell)": "Bizeps",
+  "concentration curl (dumbbell)": "Bizeps",
+  "hammer curl (cable)": "Bizeps",
+  "hammer curl (dumbbell)": "Bizeps",
+  "incline curl (dumbbell)": "Bizeps",
+  "preacher curl (barbell)": "Bizeps",
+  "preacher curl (dumbbell)": "Bizeps",
+  "preacher curl (machine)": "Bizeps",
+  "preacher curl (machine) single": "Bizeps",
+  "iso triceps pushdown cable": "Trizeps",
+  "skullcrusher (barbell)": "Trizeps",
+  "tricep overhead extension": "Trizeps",
+  "triceps dip": "Trizeps",
+  "triceps dip machine": "Trizeps",
+  "triceps extension (cable)": "Trizeps",
+  "triceps extension (dumbbell)": "Trizeps",
+  "triceps pushdown (cable - straight bar)": "Trizeps",
+  "reverse curl (barbell)": "Arme",
+  "hack squat": "Quadrizeps",
+  "leg extension (machine)": "Quadrizeps",
+  "leg extension single": "Quadrizeps",
+  "leg press": "Quadrizeps",
+  "pendulum squat": "Quadrizeps",
+  "squat (smith machine)": "Quadrizeps",
+  "kneeling leg curl": "Beinbeuger",
+  "romanian deadlift (barbell)": "Beinbeuger",
+  "seated leg curl (machine)": "Beinbeuger",
+  "hip abductor (machine)": "Beine",
+  "hip adductor (machine)": "Beine",
+  "hip thrust (barbell)": "Beine",
+  "ab workout": "Bauch",
+  "crunch": "Bauch",
+  "crunch (machine)": "Bauch",
+  "crunch (stability ball)": "Bauch",
+  "decline crunch": "Bauch",
+  "flat knee raise": "Bauch",
+  "cycling (indoor)": "Cardio",
+};
+const groupOf = (name) => GROUP_BY_NAME[String(name).trim().toLowerCase()] || null;
 
 const ID_RE = /^[a-z0-9]{1,40}$/i;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
@@ -42,7 +133,7 @@ function sanitizeGym(g) {
     if (!name) return;
     exIds.add(e.id);
     const rest = numOrNull(e.rest, 10, 900);
-    out.exercises.push({ id: e.id, name, rest: rest === null ? null : Math.round(rest) });
+    out.exercises.push({ id: e.id, name, rest: rest === null ? null : Math.round(rest), group: MUSCLE_GROUPS.includes(e.group) ? e.group : null });
   });
 
   const rIds = new Set();
@@ -85,13 +176,16 @@ function sanitizeGym(g) {
 }
 
 // Führt neue Gym-Daten mit den vorhandenen zusammen. Es wird nichts überschrieben:
-// Was es (per ID) schon gibt, bleibt unverändert. Nur eine fehlende Standard-Pause wird ergänzt.
+// Was es (per ID) schon gibt, bleibt unverändert. Nur eine fehlende Standard-Pause oder Muskelgruppe wird ergänzt.
 function mergeGym(incoming) {
   const res = { exercises: 0, routines: 0, workouts: 0, skipped: 0 };
   const exById = new Map(gym.exercises.map(e => [e.id, e]));
   incoming.exercises.forEach(e => {
     const ex = exById.get(e.id);
-    if (ex) { if (ex.rest === null && e.rest !== null) ex.rest = e.rest; }
+    if (ex) {
+      if (ex.rest === null && e.rest !== null) ex.rest = e.rest;
+      if (!ex.group && e.group) ex.group = e.group;
+    }
     else { gym.exercises.push(e); exById.set(e.id, e); res.exercises++; }
   });
   const rIds = new Set(gym.routines.map(r => r.id));
@@ -179,7 +273,7 @@ function buildFromCsv(text) {
   const exFor = (rawName) => {
     const name = rawName.trim();
     const key = name.toLowerCase();
-    if (!exByName.has(key)) exByName.set(key, { id: 'e' + hashStr(key), name, rest: null });
+    if (!exByName.has(key)) exByName.set(key, { id: 'e' + hashStr(key), name, rest: null, group: groupOf(name) });
     return exByName.get(key);
   };
 

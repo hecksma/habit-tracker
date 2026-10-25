@@ -306,6 +306,7 @@ document.getElementById('gymContent').addEventListener('click', (e) => {
   else if (act === 'edit-ex') openExSheet(b.dataset.id);
   else if (act === 'new-routine') openRoutineSheet(null);
   else if (act === 'edit-routine') openRoutineSheet(b.dataset.id);
+  else if (act === 'group-filter') { gymState.exGroup = b.dataset.g; renderGym(); }
   else if (act === 'open-ex') { gymState.page = 'exercise'; gymState.exId = b.dataset.id; gymState.exShown = 10; renderGym(); window.scrollTo(0, 0); }
   else if (act === 'back') { gymState.page = 'exercises'; renderGym(); window.scrollTo(0, 0); }
   else if (act === 'more-ex') { gymState.exShown = (gymState.exShown || 10) + 10; renderGym(); }
@@ -388,9 +389,23 @@ let exCtx = null;
 
 function showExRest() { document.getElementById('exRestValue').textContent = clock(exCtx.rest * 1000); }
 
+// Die Auswahl der Muskelgruppe: ein Tipp wählt, ein zweiter Tipp auf dieselbe Gruppe nimmt die Wahl zurück
+function renderExGroups() {
+  document.getElementById('exGroups').innerHTML = MUSCLE_GROUPS.map(g =>
+    '<button type="button" class="chip" data-g="' + g + '" aria-pressed="' + (exCtx.group === g) + '">' + g + '</button>').join('');
+}
+
+document.getElementById('exGroups').addEventListener('click', (e) => {
+  const b = e.target.closest('.chip');
+  if (!b || !exCtx) return;
+  exCtx.group = exCtx.group === b.dataset.g ? null : b.dataset.g;
+  renderExGroups();
+});
+
 function openExSheet(id, after) {
   const ex = id ? exById(id) : null;
-  exCtx = { id: ex ? ex.id : null, rest: ex && ex.rest ? ex.rest : 90, after: after || null };
+  exCtx = { id: ex ? ex.id : null, rest: ex && ex.rest ? ex.rest : 90, group: ex ? ex.group : null, after: after || null };
+  renderExGroups();
   document.getElementById('exTitle').textContent = ex ? 'Übung bearbeiten' : 'Neue Übung';
   document.getElementById('exName').value = ex ? ex.name : '';
   document.getElementById('exMsg').textContent = '';
@@ -414,10 +429,10 @@ document.getElementById('exForm').addEventListener('submit', (e) => {
   }
   const before = JSON.stringify(gym);
   let id = exCtx.id;
-  if (id) { const ex = exById(id); ex.name = name; ex.rest = exCtx.rest; }
+  if (id) { const ex = exById(id); ex.name = name; ex.rest = exCtx.rest; ex.group = exCtx.group; }
   else {
     id = 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    gym.exercises.push({ id, name, rest: exCtx.rest });
+    gym.exercises.push({ id, name, rest: exCtx.rest, group: exCtx.group });
   }
   if (!saveGym()) { gym = JSON.parse(before); msg.textContent = 'Der Speicher ist voll.'; return; }
   exSheet.close();
@@ -433,7 +448,7 @@ function renderPick() {
   const q = document.getElementById('pickFilter').value.trim().toLowerCase();
   const list = gym.exercises.filter(e => e.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name, 'de'));
   document.getElementById('pickList').innerHTML = list.length
-    ? list.map(e => '<button type="button" class="ex-row" data-id="' + e.id + '"><span>' + escapeHtml(e.name) + '</span></button>').join('')
+    ? list.map(e => '<button type="button" class="ex-row" data-id="' + e.id + '"><span><span class="ex-name">' + escapeHtml(e.name) + '</span>' + (e.group ? '<span class="log-sub">' + e.group + '</span>' : '') + '</span></button>').join('')
     : '<p class="hint">Nichts gefunden. Mit "Neue Übung" legst du sie an.</p>';
 }
 
