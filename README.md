@@ -13,6 +13,7 @@ js/habits.js        Habits: Plan, Serie, Anzeige, Abhaken, Bearbeiten-Fenster
 js/settings.js      Einstellungen, Schalter, Reihenfolge per Drag and drop
 js/stats.js         Habits: Statistik
 js/gym-data.js      Gym: Datenmodell, Prüfung (sanitizeGym), Zusammenführen, CSV-Import
+js/gym-records.js   Gym: Rekorde (PRs): Gesamt und aktuell, geschätztes 1RM
 js/gym-view.js      Gym: Startseite, Übungsseiten, Verlauf
 js/gym-workout.js   Gym: laufendes Training, Pausen-Timer, Routinen-Editor
 js/backup.js        Datensicherung (Export und Import als JSON)
@@ -51,7 +52,11 @@ auf IndexedDB umstellen, ohne den Rest zu ändern.
 
 ## Veröffentlichen
 
-1. `APP_VERSION` in `js/core.js` und `CACHE` in `sw.js` erhöhen.
+Versionsnummer (1.x.y): Die erste Zahl steigt nur bei einem Meilenstein, zum Beispiel einem neuen Bereich
+(gemeinsam entschieden). Die mittlere Zahl steigt mit dem Arbeitstag: Am ersten Tag ist es 1.1.x, am nächsten
+Arbeitstag 1.2.x usw. (1.4.x = Sonntag, 25.10.2026). Die letzte Zahl zählt die Veröffentlichungen innerhalb des Tages.
+
+1. `APP_VERSION` in `js/core.js`, `CACHE` in `sw.js` und `?v=` an den Dateien in `index.html` erhöhen.
 2. In GitHub Desktop: Commit, Push. Nach ca. einer Minute ist die neue Version unter GitHub Pages erreichbar.
 3. App auf dem Handy komplett schließen und neu öffnen. Die Versionsnummer steht unten in den Einstellungen.
 

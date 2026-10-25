@@ -27,13 +27,20 @@ function workoutDateText(w) {
 
 function renderWorkout(w, names) {
   const mins = w.durationSec ? Math.round(w.durationSec / 60) + ' Min, ' : '';
+  const prs = getPRs().map;
+  let prCount = 0;
+  w.entries.forEach((en, ei) => en.sets.forEach((st, si) => { if (prs.has(w.id + '|' + ei + '|' + si)) prCount++; }));
   return '<details class="stat-habit">'
     + '<summary><span class="log-summary-text"><span class="log-title">' + escapeHtml(w.name) + '</span>'
-    + '<span class="log-sub">' + workoutDateText(w) + ', ' + mins + w.entries.length + ' Übungen</span></span>'
+    + '<span class="log-sub">' + workoutDateText(w) + ', ' + mins + w.entries.length + ' Übungen'
+    + (prCount ? ' · <span class="pr-mark">' + trophy(13) + ' ' + prCount + (prCount === 1 ? ' Rekord' : ' Rekorde') + '</span>' : '') + '</span></span>'
     + '<span class="chevron" aria-hidden="true"></span></summary>'
-    + '<div class="sh-body">' + w.entries.map(en =>
+    + '<div class="sh-body">' + w.entries.map((en, ei) =>
         '<div class="log-ex"><div class="log-ex-name">' + escapeHtml(names.get(en.exerciseId) || 'Übung') + '</div>'
-        + '<div class="set-chips">' + en.sets.map(st => '<span class="set-chip">' + setText(st) + '</span>').join('') + '</div></div>'
+        + '<div class="set-chips">' + en.sets.map((st, si) => {
+          const r = prs.get(w.id + '|' + ei + '|' + si);
+          return '<span class="set-chip' + (r ? ' pr-' + r.level : '') + '">' + (r ? trophy(12) + ' ' : '') + setText(st) + '</span>';
+        }).join('') + '</div></div>'
       ).join('') + '</div></details>';
 }
 
@@ -75,7 +82,9 @@ function exerciseSessions(exId) {
     const top = kgs.length ? Math.max.apply(null, kgs) : null;
     // Wiederholungen des schwersten Satzes (bei Gleichstand die höchste Zahl)
     const reps = en.sets.filter(s => s.kg === top && s.reps !== null).map(s => s.reps);
-    out.push({ date: w.date, name: w.name, sets: en.sets, top, topReps: reps.length ? Math.max.apply(null, reps) : null });
+    const ei = w.entries.indexOf(en);
+    const pr = en.sets.some((st, si) => { const r = getPRs().map.get(w.id + '|' + ei + '|' + si); return r && r.level === 'all'; });
+    out.push({ date: w.date, name: w.name, sets: en.sets, top, topReps: reps.length ? Math.max.apply(null, reps) : null, pr });
   }
   return out;
 }
@@ -203,7 +212,7 @@ function chartSvg(points) {
     + '<polyline points="' + pts + '" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
     + points.map((p, i) => {
       const tip = shortDate(p.date) + ' · ' + p.name + ' · ' + numText(p.top) + ' kg' + (p.topReps !== null ? ' × ' + p.topReps : '');
-      return '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(p.top).toFixed(1) + '" r="3" fill="var(--amber)" data-tip="' + escapeHtml(tip) + '"/>';
+      return '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(p.top).toFixed(1) + '" r="' + (p.pr ? 4.5 : 3) + '" fill="' + (p.pr ? 'var(--gold)' : 'var(--amber)') + '" data-tip="' + escapeHtml((p.pr ? 'Rekord · ' : '') + tip) + '"/>';
     }).join('')
     + '</svg>';
 }
@@ -259,13 +268,26 @@ function renderExerciseDetail(el) {
   document.getElementById('gymSubtitle').textContent = sessions.length + ' Sessions';
   const tops = sessions.filter(s => s.top !== null);
   const best = tops.length ? tops.reduce((a, b) => (b.top > a.top ? b : a)) : null;
+  // Aktueller Rekord (letzte 6 Monate) und bestes geschätztes 1RM aus allen Sätzen dieser Übung
+  const hist = exHistory(ex.id), cutoff = prCutoff(todayStr());
+  let cur = null, rm = null, bestAll = null;
+  const better = (a, b) => !a || b.kg > a.kg || (b.kg === a.kg && b.reps > a.reps); // mehr Gewicht, bei Gleichstand mehr Wiederholungen
+  hist.forEach(h => {
+    if (h.date >= cutoff && better(cur, h)) cur = h;
+    if (better(bestAll, h)) bestAll = h;
+    if (h.rm !== null && (!rm || h.rm > rm.rm)) rm = h;
+  });
+  // Übungen ohne Zusatzgewicht (Körpergewicht, Unterstützung): Rekorde zählen über Wiederholungen
+  const noLoad = !hist.some(h => h.kg > 0);
   let html = '<div class="start-row" style="justify-content:space-between;margin-top:18px;">'
     + '<button type="button" class="tool-btn" data-act="back">' + (gymState.backPage === 'workout' && active ? '‹ Training' : '‹ Übungen') + '</button>'
     + '<button type="button" class="tool-btn" data-act="edit-ex" data-id="' + ex.id + '">Bearbeiten</button></div>'
     + '<div class="stats-title" style="margin-top:16px;margin-bottom:2px;">' + escapeHtml(ex.name) + '</div>'
     + '<p class="routine-last" style="margin:0 0 12px;">' + (ex.group || 'Keine Muskelgruppe') + (ex.rest ? ' · Pause ' + clock(ex.rest * 1000) : '') + '</p>'
     + '<div class="stat-grid">'
-    + '<div class="stat-card"><div class="stat-value">' + (best ? numText(best.top) + ' kg' : '–') + '</div><div class="stat-label">Bestes Gewicht</div><div class="stat-sub">' + (best ? shortDate(best.date) : 'noch keine Daten') + '</div></div>'
+    + '<div class="stat-card"><div class="stat-value">' + (noLoad ? (bestAll ? setLabel(bestAll.kg, bestAll.reps) : '–') : (best ? numText(best.top) + ' kg' : '–')) + '</div><div class="stat-label">' + trophy(13) + ' Gesamt-Rekord</div><div class="stat-sub">' + (noLoad ? (bestAll ? shortDate(bestAll.date) : 'noch keine Daten') : (best ? shortDate(best.date) : 'noch keine Daten')) + '</div></div>'
+    + '<div class="stat-card"><div class="stat-value">' + (cur ? (noLoad ? setLabel(cur.kg, cur.reps) : numText(cur.kg) + ' kg') : '–') + '</div><div class="stat-label">Aktuell (6 Monate)</div><div class="stat-sub">' + (cur ? shortDate(cur.date) : 'kein Satz in dieser Zeit') + '</div></div>'
+    + '<div class="stat-card"><div class="stat-value">' + (noLoad ? hist.length : (rm ? nf.format(Math.round(rm.rm)) + ' kg' : '–')) + '</div><div class="stat-label">' + (noLoad ? 'Sätze gesamt' : 'Geschätztes 1RM') + '</div><div class="stat-sub">' + (noLoad ? '&nbsp;' : (rm ? shortDate(rm.date) : 'noch keine Daten')) + '</div></div>'
     + '<div class="stat-card"><div class="stat-value">' + (tops[0] ? numText(tops[0].top) + ' kg' : '–') + '</div><div class="stat-label">Zuletzt</div><div class="stat-sub">' + (sessions[0] ? shortDate(sessions[0].date) : 'noch nie trainiert') + '</div></div>'
     + '</div>';
   if (tops.length >= 2) {
@@ -411,10 +433,43 @@ function renderGymStats(el) {
     + '<div class="stat-card"><div class="stat-value">' + nf.format(Math.round(avg * 10) / 10) + '</div><div class="stat-label">Ø pro Woche</div><div class="stat-sub">letzte ' + weeksSince + ' Wochen</div></div>'
     + '<div class="stat-card"><div class="stat-value">' + streak + '</div><div class="stat-label">Wochen in Folge</div><div class="stat-sub">mit mindestens 1 Training</div></div>'
     + '</div>'
+    + recordsHtml(todayD)
     + '<div class="stats-title">Trainingstage pro Woche</div>' + weekBarsHtml(items)
     + '<div class="stats-title">Sätze pro Muskelgruppe</div><p class="stats-note" style="margin:-6px 2px 8px;">Letzte 30 Tage</p>'
     + (groups.length ? groups.map(g => '<div class="grp-row"><span>' + escapeHtml(g) + '</span><span class="grp-bar"><span style="width:' + Math.max(Math.round(100 * perGroup[g] / gmax), 3) + '%"></span></span><span class="grp-num">' + perGroup[g] + '</span></div>').join('')
         : '<p class="hint">In den letzten 30 Tagen war kein Training.</p>');
+}
+
+// Abschnitt "Rekorde": Umschalter Gesamt / Aktuell, Balken pro Monat, Liste der letzten Rekorde
+function recordsHtml(todayD) {
+  const mode = gymState.prMode === 'cur' ? 'cur' : 'all';
+  // Im Modus "Aktuell" zählen auch die Gesamt-Rekorde mit
+  const recs = getPRs().list.filter(r => mode === 'cur' || r.level === 'all');
+  // Pro Training und Übung nur der beste Satz (der letzte, denn Rekorde steigen im Training)
+  const per = new Map();
+  recs.forEach(r => per.set(r.wid + '|' + r.exId, r));
+  const list = Array.from(per.values());
+  const months = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(todayD.getFullYear(), todayD.getMonth() - i, 1, 12);
+    const key = d.getFullYear() + '-' + pad(d.getMonth() + 1);
+    const count = list.filter(r => r.date.slice(0, 7) === key).length;
+    const name = d.toLocaleDateString('de-DE', { month: 'short' }).replace('.', '');
+    months.push({ count, label: i % 2 === 0 ? name : '', tip: d.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' }) + ': ' + count + (count === 1 ? ' Rekord' : ' Rekorde') });
+  }
+  const names = new Map(gym.exercises.map(e => [e.id, e.name]));
+  const latest = list.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, 8);
+  return '<div class="stats-title">Rekorde</div>'
+    + '<div class="seg" role="group" aria-label="Art der Rekorde" style="margin-bottom:6px;">'
+    + '<button type="button" data-act="pr-mode" data-m="all" aria-pressed="' + (mode === 'all') + '">Gesamt</button>'
+    + '<button type="button" data-act="pr-mode" data-m="cur" aria-pressed="' + (mode === 'cur') + '">Aktuell (6 Monate)</button></div>'
+    + '<p class="stats-note" style="margin:6px 2px 8px;">' + (mode === 'all' ? 'Sätze, die alles schlagen, was du je bei der Übung geschafft hast.' : 'Sätze, die alles aus den 6 Monaten davor schlagen. Gesamt-Rekorde zählen mit.') + '</p>'
+    + weekBarsHtml(months)
+    + (latest.length ? '<div class="pr-list">' + latest.map(r =>
+        '<div class="pr-row"><span class="pr-name">' + (r.level === 'all' ? '<span class="pr-mark">' : '<span class="pr-cur">') + trophy(14) + '</span> ' + escapeHtml(names.get(r.exId) || 'Übung')
+        + '<span class="pr-kind">' + kindsLabel(r.kinds) + '</span></span>'
+        + '<span class="pr-val">' + setLabel(r.kg, r.reps) + '</span><span class="pr-date">' + shortDate(r.date) + '</span></div>').join('') + '</div>'
+      : '<p class="hint">Noch keine Rekorde in dieser Ansicht.</p>');
 }
 
 // Umschalter Training / Statistik

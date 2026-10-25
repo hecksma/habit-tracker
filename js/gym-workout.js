@@ -12,7 +12,9 @@
 // gesichert. Schließt du die App mitten im Training, geht es danach genau da weiter.
 // Erst "Training beenden" macht daraus einen Eintrag im Verlauf.
 //   active = { name, routineId, start, restEnd, restTotal,
-//              entries: [{ exerciseId, sets: [{ kg, reps, pk, pr, done }] }] }
+//              entries: [{ exerciseId, sets: [{ kg, reps, pk, pr, rec, rk, done }] }] }
+// rec merkt sich, ob der abgehakte Satz ein Rekord war: '' (nein), 'all' (Gesamt) oder 'cur' (aktuell).
+// rk sagt, was geschlagen wurde, z. B. 'kg+1rm' (Gewicht und 1RM), '1rm' oder 'reps'.
 // kg und reps bleiben als Text, so wie du sie tippst. Umgerechnet wird erst beim Beenden.
 // pk und pr sind die Vorschläge vom letzten Mal. Sie erscheinen nur blass im leeren Feld.
 // Tippst du nichts ein und hakst den Satz ab, gelten die Vorschläge als eingetragen.
@@ -33,7 +35,7 @@ function sanitizeActive(a) {
   const entries = (Array.isArray(a.entries) ? a.entries : []).slice(0, 60)
     .filter(en => en && exById(en.exerciseId))
     .map(en => ({ exerciseId: en.exerciseId, sets: (Array.isArray(en.sets) ? en.sets : []).slice(0, 60)
-      .map(st => ({ kg: txt(st && st.kg), reps: txt(st && st.reps), pk: txt(st && st.pk), pr: txt(st && st.pr), done: !!(st && st.done === true) })) }));
+      .map(st => ({ kg: txt(st && st.kg), reps: txt(st && st.reps), pk: txt(st && st.pk), pr: txt(st && st.pr), rec: (st && (st.rec === 'all' || st.rec === 'cur')) ? st.rec : '', rk: (st && typeof st.rk === 'string' && /^[a-z0-9+]{0,12}$/.test(st.rk)) ? st.rk : '', done: !!(st && st.done === true) })) }));
   return {
     name: (typeof a.name === 'string' && a.name.trim()) ? a.name.trim().slice(0, 60) : 'Training',
     routineId: (typeof a.routineId === 'string' && ID_RE.test(a.routineId)) ? a.routineId : null,
@@ -73,10 +75,18 @@ function makeEntry(exId, count) {
       kg: '', reps: '',
       pk: base && base.kg !== null ? numText(base.kg) : '',
       pr: base && base.reps !== null ? String(base.reps) : '',
-      done: false
+      rec: '', rk: '', done: false
     });
   }
   return { exerciseId: exId, sets };
+}
+
+// Ist der Satz j dieser Übung ein Rekord? Verglichen wird mit dem Verlauf und den abgehakten Sätzen davor.
+function checkRecord(entry, j) {
+  const st = entry.sets[j];
+  const earlier = entry.sets.slice(0, j).filter(x => x.done).map(x => ({ kg: parseNum(x.kg), reps: parseNum(x.reps) }));
+  const r = liveRecord(entry.exerciseId, parseNum(st.kg), parseNum(st.reps), earlier);
+  return r;
 }
 
 function startWorkout(routine) {
@@ -96,24 +106,32 @@ function startWorkout(routine) {
   window.scrollTo(0, 0);
 }
 
+// Kleine Zeile unter einem Rekordsatz: Stufe und was geschlagen wurde
+function recNoteHtml(st) {
+  if (!st.rec) return '';
+  const kinds = st.rk ? st.rk.split('+') : ['kg'];
+  return '<div class="rec-note rec-' + st.rec + '">' + (st.rec === 'all' ? 'Gesamt-Rekord' : 'Aktueller Rekord') + ' · ' + kindsLabel(kinds) + '</div>';
+}
+
 function renderActive(el) {
+  if (gymState.reorder) { renderReorder(el); return; }
   document.getElementById('gymSubtitle').hidden = currentView !== 'gym';
   let html = '<div class="start-row" style="justify-content:flex-start;margin-top:18px;"><button type="button" class="tool-btn" data-act="wk-home">‹ Übersicht</button></div>'
     + '<div class="stats-title" style="margin-top:16px;">' + escapeHtml(active.name) + '</div>';
   active.entries.forEach((en, i) => {
     const ex = exById(en.exerciseId);
     const last = lastSets(en.exerciseId);
-    html += '<div class="wk-ex"><div class="wk-ex-head"><button type="button" class="ex-link" data-act="open-ex" data-id="' + en.exerciseId + '">' + escapeHtml(ex ? ex.name : 'Übung') + '<span aria-hidden="true">›</span></button>'
+    html += '<div class="wk-ex"><div class="wk-ex-head" data-i="' + i + '"><button type="button" class="ex-link" data-act="open-ex" data-id="' + en.exerciseId + '">' + escapeHtml(ex ? ex.name : 'Übung') + '<span aria-hidden="true">›</span></button>'
       + '<button type="button" class="x-btn" data-act="rm-ex" data-ex="' + i + '" aria-label="Übung entfernen">✕</button></div>'
       + '<div class="set-head"><span>Satz</span><span>Letztes Mal</span><span>kg</span><span>Wdh.</span><span></span></div>';
     en.sets.forEach((st, j) => {
       const prev = last[j] || last[last.length - 1];
       const prevTxt = prev ? ((prev.kg !== null && prev.reps !== null) ? numText(prev.kg) + ' × ' + prev.reps : setText(prev)) : '–';
-      html += '<div class="set-row' + (st.done ? ' done' : '') + '"><span class="set-no">' + (j + 1) + '</span>'
+      html += '<div class="set-row' + (st.done ? ' done' : '') + (st.rec ? ' rec-' + st.rec : '') + '"><span class="set-no">' + (st.rec ? trophy(18) : (j + 1)) + '</span>'
         + '<span class="set-prev">' + prevTxt + '</span>'
         + '<input class="num-input" inputmode="decimal" data-f="kg" data-ex="' + i + '" data-set="' + j + '" value="' + escapeHtml(st.kg) + '" placeholder="' + escapeHtml(st.pk || '') + '" aria-label="Gewicht in kg, Satz ' + (j + 1) + '" />'
         + '<input class="num-input" inputmode="numeric" data-f="reps" data-ex="' + i + '" data-set="' + j + '" value="' + escapeHtml(st.reps) + '" placeholder="' + escapeHtml(st.pr || '') + '" aria-label="Wiederholungen, Satz ' + (j + 1) + '" />'
-        + '<button type="button" class="set-check" data-act="toggle-set" data-ex="' + i + '" data-set="' + j + '" aria-pressed="' + st.done + '" aria-label="Satz ' + (j + 1) + ' abgeschlossen">✓</button></div>';
+        + '<button type="button" class="set-check" data-act="toggle-set" data-ex="' + i + '" data-set="' + j + '" aria-pressed="' + st.done + '" aria-label="Satz ' + (j + 1) + ' abgeschlossen">✓</button></div>' + recNoteHtml(st);
     });
     html += '<div class="wk-ex-actions"><button type="button" class="tool-btn" data-act="add-set" data-ex="' + i + '">+ Satz</button>'
       + '<button type="button" class="tool-btn" data-act="del-set" data-ex="' + i + '"' + (en.sets.length < 2 ? ' disabled' : '') + '>− Satz</button></div></div>';
@@ -128,6 +146,16 @@ function activeSummary() {
   let done = 0, total = 0;
   active.entries.forEach(en => en.sets.forEach(st => { total++; if (st.done) done++; }));
   return clock(Date.now() - active.start) + ' · ' + done + ' von ' + total + ' Sätzen';
+}
+
+// Kompakte Liste zum Umsortieren
+function renderReorder(el) {
+  el.innerHTML = '<div class="stats-title" style="margin-top:20px;">Reihenfolge ändern</div>'
+    + '<p class="stats-note" style="margin:-6px 2px 10px;">Ziehe die Übung an ihren neuen Platz und lass los.</p>'
+    + '<div id="reoList">' + active.entries.map((en, i) => {
+      const ex = exById(en.exerciseId);
+      return '<div class="reo-row" data-i="' + i + '"><span>' + escapeHtml(ex ? ex.name : 'Übung') + '</span><span class="grip">' + GRIP_ICON + '</span></div>';
+    }).join('') + '</div>';
 }
 
 function updateActiveSubtitle() {
@@ -251,6 +279,24 @@ function beep() {
   }, 1700);
 }
 
+// Rekord: kurze aufsteigende Fanfare (vier helle Töne), damit man sie von Klicken und Glocke unterscheidet
+function playRecordSound() {
+  if (!settings.sound) return;
+  playSound((ctx, t0) => {
+    [[1046.5, 0], [1318.5, 0.11], [1568, 0.22], [2093, 0.36]].forEach(([f, d], i) => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain(), dur = i === 3 ? 0.55 : 0.16;
+      osc.type = 'triangle';
+      osc.frequency.value = f;
+      gain.gain.setValueAtTime(0.0001, t0 + d);
+      gain.gain.exponentialRampToValueAtTime(0.35, t0 + d + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + d + dur);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t0 + d);
+      osc.stop(t0 + d + dur + 0.02);
+    });
+  }, 1300);
+}
+
 // Satz abgehakt: ein ganz kurzes, leises Klicken als Rückmeldung
 function playTick() {
   if (!settings.sound) return;
@@ -344,7 +390,18 @@ function finishWorkout(updateRoutine) {
     alert('Der Speicher ist voll. Das Training bleibt offen, bitte sichere erst deine Daten.');
     return;
   }
+  // Zusammenfassung der Rekorde, bevor das Training zurückgesetzt wird
+  const recs = [];
+  active.entries.forEach(en => {
+    const best = en.sets.filter(st => st.done && st.rec).sort((a, b) => (a.rec === b.rec ? 0 : a.rec === 'all' ? -1 : 1))[0];
+    const ex = exById(en.exerciseId);
+    if (best) recs.push({ name: ex ? ex.name : 'Übung', kg: parseNum(best.kg), reps: parseNum(best.reps), level: best.rec });
+  });
   endWorkout();
+  if (recs.length) {
+    showToast('<b>' + trophy(18) + ' ' + recs.length + (recs.length === 1 ? ' Rekord' : ' Rekorde') + ' in diesem Training</b><br />'
+      + recs.map(r => escapeHtml(r.name) + ': ' + setLabel(r.kg || 0, r.reps) + (r.level === 'all' ? '' : ' (aktuell)')).join('<br />'), 8000);
+  }
 }
 
 // ---- Bedienung im Gym-Bereich ----
@@ -352,6 +409,7 @@ function finishWorkout(updateRoutine) {
 document.getElementById('gymContent').addEventListener('click', (e) => {
   const b = e.target.closest('[data-act]');
   if (!b) return;
+  if (gymState.noClickUntil && Date.now() < gymState.noClickUntil) return;
   const act = b.dataset.act;
   const ei = Number(b.dataset.ex), si = Number(b.dataset.set);
   const entry = active && active.entries[ei];
@@ -359,6 +417,7 @@ document.getElementById('gymContent').addEventListener('click', (e) => {
   else if (act === 'import') renderSettingsForGym();
   else if (act === 'resume') { gymState.page = 'workout'; renderGym(); window.scrollTo(0, 0); }
   else if (act === 'wk-home') { gymState.page = 'home'; renderGym(); window.scrollTo(0, 0); }
+  else if (act === 'pr-mode') { gymState.prMode = b.dataset.m === 'cur' ? 'cur' : 'all'; renderGym(); }
   else if (act === 'gcal-month') { shiftGymMonth(Number(b.dataset.dir)); }
   else if (act === 'gcal-day') { gymState.calSel = gymState.calSel === b.dataset.date ? null : b.dataset.date; renderGym(); }
   else if (act === 'start') { if (active) return; const r = gym.routines.find(x => x.id === b.dataset.id); if (r) startWorkout(r); }
@@ -374,11 +433,20 @@ document.getElementById('gymContent').addEventListener('click', (e) => {
   else if (act === 'toggle-set' && entry && entry.sets[si]) {
     const st = entry.sets[si];
     st.done = !st.done;
+    if (!st.done) { st.rec = ''; st.rk = ''; }
     if (st.done) {
       // Nichts eingetippt? Dann gelten die Vorschläge vom letzten Mal
       if (!st.kg && st.pk) st.kg = st.pk;
       if (!st.reps && st.pr) st.reps = st.pr;
-      playTick();
+      const r = checkRecord(entry, si);
+      st.rec = r ? r.level : '';
+      st.rk = r ? r.kinds.join('+') : '';
+      if (r) {
+        playRecordSound();
+        if (settings.vibrate && navigator.vibrate) { try { navigator.vibrate([40, 50, 40, 50, 120]); } catch (e) { /* egal */ } }
+        const ex = exById(entry.exerciseId), t = recordText(ex ? ex.name : 'Übung', parseNum(st.kg), parseNum(st.reps), r.kinds, r.level);
+        showToast('<b>' + trophy(18) + ' ' + t.title + '</b><br />' + escapeHtml(t.body) + '<br /><span class="toast-sub">' + escapeHtml(t.sub) + '</span>', 4500);
+      } else playTick();
       const ex = exById(entry.exerciseId);
       startRest(ex && ex.rest ? ex.rest : 90);
     }
@@ -386,7 +454,7 @@ document.getElementById('gymContent').addEventListener('click', (e) => {
   }
   else if (act === 'add-set' && entry) {
     const prev = entry.sets[entry.sets.length - 1];
-    entry.sets.push({ kg: '', reps: '', pk: prev ? (prev.kg || prev.pk) : '', pr: prev ? (prev.reps || prev.pr) : '', done: false });
+    entry.sets.push({ kg: '', reps: '', pk: prev ? (prev.kg || prev.pk) : '', pr: prev ? (prev.reps || prev.pr) : '', rec: '', rk: '', done: false });
     saveActive(); renderGym();
   }
   else if (act === 'del-set' && entry && entry.sets.length > 1) { entry.sets.pop(); saveActive(); renderGym(); }
@@ -418,7 +486,22 @@ document.getElementById('gymContent').addEventListener('input', (e) => {
   const inp = e.target.closest('.num-input');
   if (!inp || !active) return;
   const st = active.entries[Number(inp.dataset.ex)] && active.entries[Number(inp.dataset.ex)].sets[Number(inp.dataset.set)];
-  if (st) { st[inp.dataset.f] = inp.value.slice(0, 8); saveActive(); }
+  if (st) {
+    st[inp.dataset.f] = inp.value.slice(0, 8);
+    // Ändert man einen schon abgehakten Satz, wird der Rekord neu beurteilt
+    if (st.done) {
+      const ei = Number(inp.dataset.ex), si = Number(inp.dataset.set), r = checkRecord(active.entries[ei], si);
+      st.rec = r ? r.level : '';
+      st.rk = r ? r.kinds.join('+') : '';
+      const row = inp.closest('.set-row');
+      row.classList.toggle('rec-all', st.rec === 'all');
+      row.classList.toggle('rec-cur', st.rec === 'cur');
+      row.querySelector('.set-no').innerHTML = st.rec ? trophy(18) : String(si + 1);
+      if (row.nextElementSibling && row.nextElementSibling.classList.contains('rec-note')) row.nextElementSibling.remove();
+      row.insertAdjacentHTML('afterend', recNoteHtml(st));
+    }
+    saveActive();
+  }
 });
 
 // Tippst du in ein Zahlenfeld mit Inhalt, ist der Inhalt markiert: die neue Zahl ersetzt ihn direkt
@@ -559,6 +642,96 @@ document.getElementById('pickNew').addEventListener('click', () => { pickSheet.c
 document.getElementById('pickCancel').addEventListener('click', () => pickSheet.close());
 pickSheet.addEventListener('click', (e) => { if (e.target === pickSheet) pickSheet.close(); });
 
+// ---- Ziehen zum Sortieren ----
+//
+// Gemeinsame Hilfe für den Routinen-Editor und das laufende Training.
+// row ist die Zeile, die du gerade hältst, container die Liste, rowSel der Selektor der Zeilen.
+// Während du ziehst, rutscht die Zeile in der Liste hin und her. Beim Loslassen
+// bekommt onDone die neue Reihenfolge als Liste der alten Positionen (data-i).
+const GRIP_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.8"/><circle cx="15" cy="6" r="1.8"/><circle cx="9" cy="12" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="9" cy="18" r="1.8"/><circle cx="15" cy="18" r="1.8"/></svg>';
+
+function startDrag(row, container, rowSel, onDone) {
+  row.classList.add('dragging');
+  const move = (e) => {
+    const y = e.clientY;
+    const rows = Array.from(container.querySelectorAll(rowSel));
+    for (const r of rows) {
+      if (r === row) continue;
+      const rect = r.getBoundingClientRect(), mid = rect.top + rect.height / 2;
+      const after = row.compareDocumentPosition(r) & Node.DOCUMENT_POSITION_FOLLOWING; // r steht unter row
+      if (after && y > mid) container.insertBefore(row, r.nextSibling);
+      else if (!after && y < mid) container.insertBefore(row, r);
+      else continue;
+      break;
+    }
+    // Nahe am Rand: die Seite mitscrollen
+    if (y < 90) window.scrollBy(0, -8);
+    else if (y > window.innerHeight - 140) window.scrollBy(0, 8);
+  };
+  // Beim Ziehen darf die Seite nicht mitwischen
+  const block = (e) => { if (e.cancelable) e.preventDefault(); };
+  const end = () => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', end);
+    document.removeEventListener('pointercancel', end);
+    document.removeEventListener('touchmove', block);
+    row.classList.remove('dragging');
+    onDone(Array.from(container.querySelectorAll(rowSel)).map(r => Number(r.dataset.i)));
+  };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', end);
+  document.addEventListener('pointercancel', end);
+  document.addEventListener('touchmove', block, { passive: false });
+}
+
+// Im Routinen-Editor: am Griff ziehen
+document.getElementById('routineItems').addEventListener('pointerdown', (e) => {
+  const grip = e.target.closest('.grip');
+  if (!grip || !rCtx) return;
+  e.preventDefault();
+  const box = document.getElementById('routineItems');
+  startDrag(grip.closest('.ritem'), box, '.ritem', (order) => {
+    rCtx.items = order.map(i => rCtx.items[i]);
+    renderRoutineItems();
+  });
+});
+
+// Im laufenden Training: den Kopf einer Übung gedrückt halten, dann zeigt die App alle Übungen
+// als kompakte Liste. Ziehen ändert die Reihenfolge, Loslassen klappt alles wieder auf.
+let holdTimer = null, holdStart = null;
+function cancelHold() { clearTimeout(holdTimer); holdTimer = null; }
+
+document.getElementById('gymContent').addEventListener('pointerdown', (e) => {
+  const head = e.target.closest('.wk-ex-head');
+  if (!head || !active || gymState.reorder || active.entries.length < 2 || e.target.closest('.x-btn')) return;
+  const idx = Number(head.dataset.i);
+  holdStart = { x: e.clientX, y: e.clientY };
+  cancelHold();
+  holdTimer = setTimeout(() => {
+    holdTimer = null;
+    gymState.noClickUntil = Date.now() + 800;   // das Loslassen darf die Übung nicht öffnen
+    const scroll = window.scrollY;
+    gymState.reorder = true;
+    renderGym();
+    const row = document.querySelector('.reo-row[data-i="' + idx + '"]');
+    if (!row) { gymState.reorder = false; renderGym(); return; }
+    if (navigator.vibrate && settings.vibrate) { try { navigator.vibrate(15); } catch (err) { /* egal */ } }
+    startDrag(row, document.getElementById('reoList'), '.reo-row', (order) => {
+      const old = active.entries;
+      active.entries = order.map(i => old[i]);
+      gymState.reorder = false;
+      saveActive(); renderGym();
+      window.scrollTo(0, scroll);
+    });
+  }, 450);
+});
+document.addEventListener('pointermove', (e) => {
+  if (holdTimer && holdStart && Math.hypot(e.clientX - holdStart.x, e.clientY - holdStart.y) > 10) cancelHold();
+});
+['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, cancelHold));
+// Langes Drücken soll auf dem Handy kein Textmenü öffnen
+document.getElementById('gymContent').addEventListener('contextmenu', (e) => { if (e.target.closest('.wk-ex-head, .reo-row')) e.preventDefault(); });
+
 // ---- Routine anlegen / bearbeiten ----
 
 const routineSheet = document.getElementById('routineSheet');
@@ -567,16 +740,13 @@ let rCtx = null;
 function renderRoutineItems() {
   const box = document.getElementById('routineItems');
   if (!rCtx.items.length) { box.innerHTML = '<p class="ritems-empty">Noch keine Übungen.</p>'; return; }
-  const n = rCtx.items.length;
   box.innerHTML = rCtx.items.map((it, i) => {
     const ex = exById(it.exerciseId);
-    return '<div class="ritem"><div class="ritem-name">' + escapeHtml(ex ? ex.name : 'Übung') + '</div><div class="ritem-ctl">'
+    return '<div class="ritem" data-i="' + i + '"><div class="ritem-top"><span class="grip" aria-label="Zum Verschieben ziehen" role="img">' + GRIP_ICON + '</span><div class="ritem-name">' + escapeHtml(ex ? ex.name : 'Übung') + '</div></div><div class="ritem-ctl">'
       + '<button type="button" data-r="minus" data-i="' + i + '" aria-label="Weniger Sätze"' + (it.sets <= 1 ? ' disabled' : '') + '>−</button>'
       + '<span class="n">' + it.sets + (it.sets === 1 ? ' Satz' : ' Sätze') + '</span>'
       + '<button type="button" data-r="plus" data-i="' + i + '" aria-label="Mehr Sätze"' + (it.sets >= 20 ? ' disabled' : '') + '>+</button>'
       + '<span class="spacer"></span>'
-      + '<button type="button" data-r="up" data-i="' + i + '" aria-label="Nach oben"' + (i === 0 ? ' disabled' : '') + '>↑</button>'
-      + '<button type="button" data-r="down" data-i="' + i + '" aria-label="Nach unten"' + (i === n - 1 ? ' disabled' : '') + '>↓</button>'
       + '<button type="button" data-r="rm" data-i="' + i + '" aria-label="Entfernen">✕</button></div></div>';
   }).join('');
 }
@@ -602,8 +772,6 @@ document.getElementById('routineItems').addEventListener('click', (e) => {
   if (a === 'minus') items[i].sets = Math.max(1, items[i].sets - 1);
   else if (a === 'plus') items[i].sets = Math.min(20, items[i].sets + 1);
   else if (a === 'rm') items.splice(i, 1);
-  else if (a === 'up' && i > 0) [items[i - 1], items[i]] = [items[i], items[i - 1]];
-  else if (a === 'down' && i < items.length - 1) [items[i + 1], items[i]] = [items[i], items[i + 1]];
   renderRoutineItems();
 });
 

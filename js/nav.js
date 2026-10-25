@@ -155,3 +155,37 @@ hardenInputs(document.body);
 new MutationObserver((list) => {
   list.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1) hardenInputs(n); }));
 }).observe(document.body, { childList: true, subtree: true });
+
+
+// ======================================================================
+// 12c) Wischen zwischen den Ansichten eines Bereichs
+// ======================================================================
+// Nach links wischen: nächste Ansicht (Heute -> Statistik, Training -> Statistik).
+// Nach rechts wischen: zurück. Nur dort, wo es solche Ansichten gibt, nie in Fenstern,
+// Eingabefeldern oder auf Diagrammen (dort wischt man, um Werte zu sehen).
+let swipe = null;
+document.addEventListener('touchstart', (e) => {
+  swipe = null;
+  if (e.touches.length !== 1 || openDialogs.length) return;
+  if (e.target.closest && e.target.closest('input, textarea, select, .chart-svg, .chart')) return;
+  const t = e.touches[0];
+  // Am Bildschirmrand beginnt die Zurück-Geste des Handys, die lassen wir in Ruhe
+  if (t.clientX < 28 || t.clientX > window.innerWidth - 28) return;
+  swipe = { x: t.clientX, y: t.clientY, time: Date.now() };
+}, { passive: true });
+
+document.addEventListener('touchend', (e) => {
+  if (!swipe) return;
+  const t = e.changedTouches[0], dx = t.clientX - swipe.x, dy = t.clientY - swipe.y;
+  const fast = Date.now() - swipe.time < 700;
+  swipe = null;
+  if (!fast || Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+  const next = dx < 0; // nach links gewischt = nächste Ansicht
+  if (currentView === 'habits') {
+    const want = next ? 'stats' : 'today';
+    if (want !== habitsTab) { setHabitsTab(want); window.scrollTo(0, 0); }
+  } else if (currentView === 'gym' && gymState.page === 'home') {
+    const want = next ? 'stats' : 'train';
+    if (want !== gymState.tab) { gymState.tab = want; renderGym(); window.scrollTo(0, 0); }
+  }
+}, { passive: true });
