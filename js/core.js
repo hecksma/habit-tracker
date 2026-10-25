@@ -1,0 +1,86 @@
+// ======================================================================
+// Grundlagen: Version, Speicher-Hilfen, Datumshilfen
+// Teil von Maximize. Die Skripte laufen in der Reihenfolge, wie sie in index.html stehen
+// und teilen sich dieselben Funktionen und Variablen.
+// ======================================================================
+
+// ======================================================================
+// 1) Grundlagen: Speicher und Datumshilfen
+// ======================================================================
+
+// Unter diesem Namen liegen deine Daten im Browser-Speicher (localStorage)
+const STORAGE_KEY = 'maximize-habits';
+// Versionsnummer der App. Sie erscheint unten in den Einstellungen, damit du siehst,
+// ob ein Update angekommen ist. Bei jeder Veröffentlichung hier und in sw.js erhöhen.
+const APP_VERSION = '1.0.0';
+// Aufbau der gespeicherten Daten. Ändert sich der Aufbau einmal, erhöhst du diese Zahl
+// und schreibst in migrate() (siehe main.js), wie alte Daten umgewandelt werden.
+const SCHEMA_VERSION = 1;
+const SCHEMA_KEY = 'maximize-schema';
+// Alter Speicherort aus der Zeit, als die App noch anders hieß.
+// Wir lesen ihn weiter, damit bestehende Daten nicht verloren gehen.
+const LEGACY_STORAGE_KEY = 'wegmarken-habits';
+
+const DAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']; // Index 0 = Montag
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+
+let habits = [];
+let loaded = false;
+let habitsTab = 'today';   // 'today' oder 'stats'
+let currentView = 'habits'; // Bereich der unteren Leiste
+
+const contentEl = document.getElementById('content');
+const subtitleEl = document.getElementById('subtitle');
+const addForm = document.getElementById('addForm');
+const habitInput = document.getElementById('habitInput');
+
+// Datumsangaben speichern wir als Text im Format "2026-10-24" (Jahr-Monat-Tag).
+// Das lässt sich alphabetisch vergleichen: "2026-10-24" < "2026-10-25".
+function pad(n) { return String(n).padStart(2, '0'); }
+function fmt(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+// Mittag statt Mitternacht, damit Zeitumstellungen kein Datum verschieben
+function parseDate(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d, 12); }
+function addDays(d, n) { const x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; }
+function todayStr() { return fmt(new Date()); }
+// JavaScript zählt Sonntag = 0. Wir wollen Montag = 0, deshalb die Umrechnung.
+function weekdayIdx(d) { return (d.getDay() + 6) % 7; }
+function weekStart(d) { return addDays(d, -weekdayIdx(d)); }
+
+// Zeigt das heutige Datum oben an, z. B. "Samstag, 24. Oktober".
+function showTodayLabel() {
+  const text = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+  document.getElementById('todayLabel').textContent = text;
+}
+
+// Liest gespeicherte Daten (JSON). Ist der Inhalt beschädigt, wird er nicht stillschweigend
+// überschrieben: Eine Kopie wird unter einem anderen Namen aufgehoben (siehe quarantine).
+function readJson(key) {
+  let raw = null;
+  try { raw = localStorage.getItem(key); } catch (e) { return null; }
+  if (raw === null) return null;
+  try { return JSON.parse(raw); }
+  catch (e) { quarantine(key); return null; }
+}
+
+// Hebt den aktuellen Inhalt eines Schlüssels als Kopie auf, bevor er überschrieben wird.
+// Es bleiben nur die drei neuesten Kopien erhalten.
+function quarantine(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return;
+    localStorage.setItem('maximize-defekt-' + Date.now() + '-' + key, raw);
+    const old = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.indexOf('maximize-defekt-') === 0) old.push(k);
+    }
+    old.sort().slice(0, Math.max(0, old.length - 3)).forEach(k => localStorage.removeItem(k));
+  } catch (e) { /* nicht kritisch */ }
+}
+
+// Macht Text für HTML unschädlich. Wichtig sind auch die Anführungszeichen:
+// Namen landen teils in Attributen (z. B. aria-label="..."), und ein Namensbestandteil
+// mit " könnte sonst aus dem Attribut ausbrechen.
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
