@@ -14,6 +14,9 @@ js/settings.js      Einstellungen, Schalter, Reihenfolge per Drag and drop
 js/stats.js         Habits: Statistik
 js/gym-data.js      Gym: Datenmodell, Prüfung (sanitizeGym), Zusammenführen, CSV-Import
 js/gym-records.js   Gym: Rekorde (PRs): Gesamt und aktuell, geschätztes 1RM
+js/timepick.js      Uhrzeit-Auswahl (24 Stunden, Uhrenrad)
+js/sleep-data.js    Schlaf: Datenmodell, Prüfung, Zusammenführen
+js/sleep-view.js    Schlaf: Gute-Nacht-Ablauf, Morgenfrage, Statistik
 js/gym-view.js      Gym: Startseite, Übungsseiten, Verlauf
 js/gym-workout.js   Gym: laufendes Training, Pausen-Timer, Routinen-Editor
 js/backup.js        Datensicherung (Export und Import als JSON)
@@ -33,6 +36,8 @@ und Variablen. Eine neue Datei muss in `index.html` (Skript-Zeile) **und** in `s
 | `maximize-habits` | Liste der Gewohnheiten |
 | `maximize-gym` | Übungen, Routinen, Trainings |
 | `maximize-gym-active` | gerade laufendes Training (Autosave) |
+| `maximize-sleep` | Nächte, Notizen-Auswahl, Schlafziel, Weckzeiten pro Wochentag |
+| `maximize-sleep-active` | laufende Nacht (bis du morgens antwortest) |
 | `maximize-settings` | Einstellungen |
 | `maximize-view` | zuletzt geöffneter Bereich |
 | `maximize-schema` | Version des Datenaufbaus (siehe `migrate()` in `main.js`) |

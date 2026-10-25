@@ -40,6 +40,8 @@ document.getElementById('appVersion').textContent = 'Maximize ' + APP_VERSION;
 showTodayLabel();
 loadSettings();
 loadGym();
+loadSleep();
+loadSleepActive();
 loadActive();
 if (active) gymState.page = 'workout'; // läuft ein Training, geht es nach dem Öffnen dort weiter
 loadHabits();
@@ -48,6 +50,7 @@ if (navigator.storage && navigator.storage.persist) navigator.storage.persist().
 let savedView = 'habits';
 try { savedView = localStorage.getItem(VIEW_KEY) || 'habits'; } catch (e) { /* Standard */ }
 setView(savedView);
+maybeAskWake(); // Morgens: hat die Weckzeit gestimmt?
 
 // Wenn du die App über Nacht offen lässt und morgens zurückkehrst, soll sie den neuen Tag zeigen.
 document.addEventListener('visibilitychange', () => {
@@ -60,6 +63,7 @@ window.addEventListener('storage', (e) => {
   if (e.key === STORAGE_KEY) loadHabits();
   else if (e.key === GYM_KEY) { loadGym(); renderGym(); }
   else if (e.key === ACTIVE_KEY) { loadActive(); renderGym(); }
+  else if (e.key === SLEEP_KEY || e.key === SLEEP_ACTIVE_KEY) { loadSleep(); loadSleepActive(); if (currentView === 'sleep') renderSleep(); }
   else if (e.key === SETTINGS_KEY) { loadSettings(); render(); }
 });
 

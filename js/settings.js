@@ -69,6 +69,7 @@ function renderSettings() {
   document.getElementById('soundSwitch').setAttribute('aria-checked', String(settings.sound));
   document.getElementById('vibSwitch').setAttribute('aria-checked', String(settings.vibrate));
   renderOrderList();
+  renderSleepSettings();
 }
 
 document.getElementById('settingsBtn').addEventListener('click', () => {

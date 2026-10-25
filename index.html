@@ -16,7 +16,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" /></noscript>
 <!-- Aussehen der App -->
-<link rel="stylesheet" href="css/style.css?v=1.4.4" />
+<link rel="stylesheet" href="css/style.css?v=2.0.1" />
 </head>
 <body>
 
@@ -45,6 +45,7 @@
   </div>
   <p class="subtitle" id="subtitle">Lege unten deine erste Gewohnheit an.</p>
   <p class="subtitle" id="gymSubtitle" hidden></p>
+  <p class="subtitle" id="sleepSubtitle" hidden></p>
 </header>
 
 <!-- Jeder Bereich der App ist ein eigener Abschnitt. Es ist immer nur einer sichtbar. -->
@@ -70,6 +71,16 @@
   </div>
 
   <div id="gymContent"></div>
+</section>
+
+<section id="view-sleep" hidden>
+  <!-- Umschalter innerhalb von Schlaf: Nacht (Startseite) oder Statistik -->
+  <div class="seg sleep-tabs" id="sleepTabs" role="group" aria-label="Ansicht">
+    <button type="button" data-stab="night" aria-pressed="true">Nacht</button>
+    <button type="button" data-stab="stats" aria-pressed="false">Statistik</button>
+  </div>
+
+  <div id="sleepContent"></div>
 </section>
 
 <div class="add-bar">
@@ -107,6 +118,10 @@
   <button type="button" class="tab" data-view="gym">
     <span class="tab-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg></span>
     <span>Gym</span>
+  </button>
+  <button type="button" class="tab" data-view="sleep">
+    <span class="tab-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></span>
+    <span>Schlaf</span>
   </button>
 </nav>
 
@@ -238,6 +253,58 @@
   </div>
 </dialog>
 
+<dialog id="wakeSheet" aria-labelledby="wakeTitle">
+  <h2 id="wakeTitle" tabindex="-1" autofocus>Guten Morgen</h2>
+  <p id="wakeText" style="font-size:16px;margin:0 0 12px;"></p>
+  <div id="wakeEdit" hidden>
+    <label class="ne-label" for="wakeTime">Wann bist du aufgewacht?</label>
+    <input type="text" readonly id="wakeTime" class="time-input tp" data-tp="time" data-title="Aufgewacht um" aria-label="Aufwachzeit" />
+    <p class="status error" id="wakeMsg" role="alert"></p>
+  </div>
+  <div class="sheet-actions">
+    <button type="button" class="btn" id="wakeNo">Nein, andere Zeit</button>
+    <span class="spacer"></span>
+    <button type="button" class="btn primary" id="wakeYes">Ja</button>
+  </div>
+</dialog>
+
+<dialog id="nightSheet" aria-labelledby="nightTitle">
+  <form id="nightForm" method="dialog">
+    <h2 id="nightTitle" tabindex="-1" autofocus>Nacht nachtragen</h2>
+    <label class="ne-label" for="nightBed">Eingeschlafen</label>
+    <input type="text" readonly id="nightBed" class="time-input tp" data-tp="datetime" data-title="Eingeschlafen" />
+    <label class="ne-label" for="nightWake" style="margin-top:12px;">Aufgewacht</label>
+    <input type="text" readonly id="nightWake" class="time-input tp" data-tp="datetime" data-title="Aufgewacht" />
+    <p class="status error" id="nightMsg" role="alert"></p>
+    <div class="sheet-actions">
+      <button type="button" class="btn danger" id="nightDelete" hidden>Löschen</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="nightCancel">Abbrechen</button>
+      <button type="submit" class="btn primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="timePick" aria-labelledby="tpTitle">
+  <h2 id="tpTitle" tabindex="-1">Uhrzeit</h2>
+  <div class="tp-date" id="tpDateRow" hidden>
+    <button type="button" class="btn" id="tpPrev" aria-label="Einen Tag zurück">‹</button>
+    <span id="tpDateLbl"></span>
+    <button type="button" class="btn" id="tpNext" aria-label="Einen Tag weiter">›</button>
+  </div>
+  <div class="tp-digits">
+    <input type="text" id="tpH" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Stunde (0 bis 23)" />
+    <span>:</span>
+    <input type="text" id="tpM" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Minute" />
+  </div>
+  <svg id="tpDial" viewBox="0 0 240 240" class="tp-dial" aria-label="Uhr zum Antippen"></svg>
+  <div class="sheet-actions">
+    <button type="button" class="btn" id="tpCancel">Abbrechen</button>
+    <span class="spacer"></span>
+    <button type="button" class="btn primary" id="tpOk">OK</button>
+  </div>
+</dialog>
+
 <dialog id="settings" aria-labelledby="settingsTitle">
   <h2 id="settingsTitle" tabindex="-1" autofocus>Einstellungen</h2>
 
@@ -279,6 +346,32 @@
     <button type="button" role="switch" class="switch" id="vibSwitch" aria-checked="true" aria-labelledby="vibSwitchLabel"><span class="knob"></span></button>
   </div>
 
+  <div class="setting setting-row" data-area="sleep">
+    <div>
+      <span class="setting-title">Schlafziel</span>
+      <span class="setting-desc">Wie viel Schlaf du pro Nacht anpeilst</span>
+    </div>
+    <div class="stepper">
+      <button type="button" id="sleepGoalMinus" aria-label="Weniger">−</button>
+      <span class="value" id="sleepGoalValue" aria-live="polite">8 h</span>
+      <button type="button" id="sleepGoalPlus" aria-label="Mehr">+</button>
+    </div>
+  </div>
+
+  <details class="setting" id="tagDetails" name="settings-section" data-area="sleep">
+    <summary>
+      <span>
+        <span class="setting-title">Notizen zur Nacht</span>
+        <span class="setting-desc">Schlagworte, die du bei einer Nacht anhaken kannst</span>
+      </span>
+      <span class="chevron" aria-hidden="true"></span>
+    </summary>
+    <div class="setting-body">
+      <p class="setting-desc">Neue Notizen legst du direkt bei einer Nacht mit „+ Neu“ an. Hier kannst du Schlagworte aus der Auswahl entfernen. Gespeicherte Nächte behalten ihre Notizen.</p>
+      <div class="tag-list" id="tagList"></div>
+    </div>
+  </details>
+
   <details class="setting" id="backupDetails" name="settings-section">
     <summary>
       <span>
@@ -288,7 +381,7 @@
       <span class="chevron" aria-hidden="true"></span>
     </summary>
     <div class="setting-body">
-      <p class="setting-desc">Sichert Gewohnheiten und Gym-Daten in einer Datei. Beim Wiederherstellen wird nichts überschrieben oder gelöscht, die Daten werden mit den vorhandenen zusammengeführt.</p>
+      <p class="setting-desc">Sichert Gewohnheiten, Gym- und Schlafdaten in einer Datei. Beim Wiederherstellen wird nichts überschrieben oder gelöscht, die Daten werden mit den vorhandenen zusammengeführt.</p>
       <div class="tool-row">
         <button type="button" class="tool-btn" id="exportBtn">Daten sichern</button>
         <button type="button" class="tool-btn" id="importBtn">Daten wiederherstellen</button>
@@ -329,17 +422,20 @@
 </dialog>
 
 <!-- Die Skripte laufen der Reihe nach. Jedes hat einen Bereich der App, siehe README.md -->
-<script src="js/core.js?v=1.4.4"></script>
-<script src="js/habits.js?v=1.4.4"></script>
-<script src="js/settings.js?v=1.4.4"></script>
-<script src="js/stats.js?v=1.4.4"></script>
-<script src="js/gym-data.js?v=1.4.4"></script>
-<script src="js/gym-records.js?v=1.4.4"></script>
-<script src="js/gym-view.js?v=1.4.4"></script>
-<script src="js/gym-workout.js?v=1.4.4"></script>
-<script src="js/backup.js?v=1.4.4"></script>
-<script src="js/nav.js?v=1.4.4"></script>
-<script src="js/main.js?v=1.4.4"></script>
+<script src="js/core.js?v=2.0.1"></script>
+<script src="js/habits.js?v=2.0.1"></script>
+<script src="js/settings.js?v=2.0.1"></script>
+<script src="js/stats.js?v=2.0.1"></script>
+<script src="js/gym-data.js?v=2.0.1"></script>
+<script src="js/gym-records.js?v=2.0.1"></script>
+<script src="js/timepick.js?v=2.0.1"></script>
+<script src="js/sleep-data.js?v=2.0.1"></script>
+<script src="js/gym-view.js?v=2.0.1"></script>
+<script src="js/gym-workout.js?v=2.0.1"></script>
+<script src="js/sleep-view.js?v=2.0.1"></script>
+<script src="js/backup.js?v=2.0.1"></script>
+<script src="js/nav.js?v=2.0.1"></script>
+<script src="js/main.js?v=2.0.1"></script>
 
 </body>
 </html>

@@ -22,7 +22,8 @@ function exportData() {
     version: 2,
     exportedAt: new Date().toISOString(),
     habits: habits,
-    gym: gym
+    gym: gym,
+    sleep: sleep
   };
   const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -36,7 +37,7 @@ function exportData() {
   settings.lastBackup = todayStr();
   saveSettings();
   updateBackupInfo();
-  setStatus('Sicherung gespeichert (' + habits.length + ' Gewohnheiten, ' + gym.workouts.length + ' Trainings).', false);
+  setStatus('Sicherung gespeichert (' + habits.length + ' Gewohnheiten, ' + gym.workouts.length + ' Trainings, ' + sleep.nights.length + ' Nächte).', false);
 }
 
 // Prüft, ob ein Eintrag aus einer Datei (oder dem Speicher) wie eine echte Gewohnheit aussieht.
@@ -58,7 +59,7 @@ async function importData(file) {
   try {
     const data = JSON.parse(await file.text());
     // 'wegmarken' akzeptieren wir weiter, damit ältere Sicherungen noch lesbar sind
-    if (!data || !['maximize', 'wegmarken'].includes(data.app) || (!Array.isArray(data.habits) && !data.gym)) {
+    if (!data || !['maximize', 'wegmarken'].includes(data.app) || (!Array.isArray(data.habits) && !data.gym && !data.sleep)) {
       throw new Error('format');
     }
     const incomingHabits = Array.isArray(data.habits) ? data.habits : [];
@@ -94,8 +95,15 @@ async function importData(file) {
         gymText = ' Gym-Daten konnten nicht gespeichert werden (Speicher voll).';
       }
     }
+    let sleepText = '';
+    if (data.sleep) {
+      const before = JSON.stringify(sleep);
+      const added = mergeSleep(sanitizeSleep(data.sleep));
+      if (saveSleep()) { sleepText = ' Schlaf: ' + added + ' Nächte neu.'; renderSleep(); }
+      else { sleep = JSON.parse(before); sleepText = ' Schlafdaten konnten nicht gespeichert werden (Speicher voll).'; }
+    }
     setStatus('Wiederhergestellt: ' + added + ' Habits neu, ' + (valid.length - added) + ' zusammengeführt'
-      + (skipped ? ', ' + skipped + ' übersprungen' : '') + '.' + gymText, false);
+      + (skipped ? ', ' + skipped + ' übersprungen' : '') + '.' + gymText + sleepText, false);
   } catch (e) {
     setStatus('Diese Datei ist keine gültige Sicherung von Maximize.', true);
   }

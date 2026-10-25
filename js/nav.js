@@ -13,7 +13,8 @@
 const VIEW_KEY = 'maximize-view';
 const VIEWS = {
   habits: { title: 'Deine Gewohnheiten' },
-  gym: { title: 'Gym' }
+  gym: { title: 'Gym' },
+  sleep: { title: 'Schlaf' }
 };
 
 // Die Farbe der Statusleiste des Handys (meta theme-color) lässt sich nicht per CSS überblenden.
@@ -45,13 +46,15 @@ function setView(name) {
   // Untertitel und Eingabeleiste gehören nur zu den Habits
   subtitleEl.hidden = name !== 'habits';
   document.getElementById('gymSubtitle').hidden = name !== 'gym';
+  document.getElementById('sleepSubtitle').hidden = name !== 'sleep';
   currentView = name;
   // Jeder Bereich hat sein eigenes Farbschema (siehe :root[data-area] in style.css)
   document.documentElement.dataset.area = name;
-  fadeThemeColor(name === 'gym' ? [23, 27, 46] : [28, 43, 39]);
+  fadeThemeColor(name === 'gym' ? [23, 27, 46] : name === 'sleep' ? [30, 15, 17] : [28, 43, 39]);
   if (name !== 'gym' && typeof gymState !== 'undefined') gymState.page = 'home';
   updateChrome();
   if (name === 'gym') renderGym();
+  if (name === 'sleep') renderSleep();
   window.scrollTo(0, 0);
   try { localStorage.setItem(VIEW_KEY, name); } catch (e) { /* nicht kritisch */ }
 }
@@ -62,6 +65,7 @@ document.querySelector('.tabbar').addEventListener('click', (e) => {
   // Ein Tipp auf das Symbol bringt immer zum ersten Bildschirm des Bereichs,
   // auch wenn man schon im Bereich ist (z. B. in einer Übung oder in der Statistik).
   if (tab.dataset.view === 'gym') { gymState.page = 'home'; gymState.tab = 'train'; }
+  if (tab.dataset.view === 'sleep') sleepState.tab = 'night';
   if (tab.dataset.view === 'habits') setHabitsTab('today');
   setView(tab.dataset.view);
 });
@@ -117,7 +121,10 @@ window.addEventListener('popstate', () => {
     gymState.tab = 'train'; renderGym(); window.scrollTo(0, 0);
   }
   // 3) vom Gym-Hauptbildschirm zu den Habits
-  else if (currentView === 'gym') {
+  else if (currentView === 'sleep' && sleepState.tab === 'stats') {
+    sleepState.tab = 'night'; renderSleep(); window.scrollTo(0, 0);
+  }
+  else if (currentView !== 'habits') {
     setView('habits');
   }
   // 4) Statistik der Habits zurück zu "Heute"
@@ -184,6 +191,9 @@ document.addEventListener('touchend', (e) => {
   if (currentView === 'habits') {
     const want = next ? 'stats' : 'today';
     if (want !== habitsTab) { setHabitsTab(want); window.scrollTo(0, 0); }
+  } else if (currentView === 'sleep') {
+    const want = next ? 'stats' : 'night';
+    if (want !== sleepState.tab) { sleepState.tab = want; renderSleep(); window.scrollTo(0, 0); }
   } else if (currentView === 'gym' && gymState.page === 'home') {
     const want = next ? 'stats' : 'train';
     if (want !== gymState.tab) { gymState.tab = want; renderGym(); window.scrollTo(0, 0); }

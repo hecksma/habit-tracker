@@ -38,6 +38,20 @@
   --backdrop: rgba(6, 8, 20, 0.75);
 }
 
+/* Farbschema von Schlaf: dunkles Weinrot mit warmen Akzenten in Orange und Gelb, angenehm für den Abend */
+:root[data-area="sleep"] {
+  --bg: #1E0F11;
+  --bg-elevated: #2B1719;
+  --ink: #F3E6DE;
+  --ink-dim: #B8A097;
+  --amber: #F4A259;      /* Orange: Akzent, "Ziel erreicht" */
+  --sage: #E9B85A;       /* Warmes Gelb: Hauptfarbe */
+  --danger: #FF8A7A;
+  --tint: 247, 235, 227;
+  --accent-rgb: 244, 162, 89;
+  --backdrop: rgba(20, 6, 8, 0.78);
+}
+
 * { box-sizing: border-box; }
 
 /* Das hidden-Attribut soll immer gewinnen, auch bei Elementen mit eigenem display */
@@ -1073,3 +1087,49 @@ html, body { overscroll-behavior-y: contain; }
 
 .update-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 31; border-color: var(--sage); }
 .update-bar .btn { padding: 8px 14px; }
+
+/* ---- Schlaf ---- */
+.sleep-tabs { margin-top: 20px; }
+.time-input {
+  width: 100%; margin-top: 6px; padding: 12px 14px; font: inherit; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums;
+  background: var(--bg); color: var(--ink); border: 1px solid var(--border); border-radius: 12px; color-scheme: dark;
+}
+.night-card { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-top: 8px; }
+.night-card-head { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
+.ne-label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
+.night-card > .ne-label:first-child, .night-ed > .ne-label:first-child { margin-top: 0; }
+.ne-label span { font-weight: 400; color: var(--ink-dim); margin-left: 6px; font-size: 12px; }
+.chip.add { border-style: dashed; }
+.chip small { color: var(--ink-dim); font-size: 11px; margin-left: 4px; }
+.chip[aria-pressed="true"] small { color: inherit; }
+.newtag-row { display: flex; gap: 8px; margin-top: 10px; }
+.newtag-row .text-input { margin: 0; flex: 1; }
+.sleeping { text-align: center; }
+.sleeping .ne-label { text-align: left; }
+.big-time { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 56px; font-variant-numeric: tabular-nums; line-height: 1.1; color: var(--sage); }
+.tool-row a.tool-btn { text-decoration: none; display: inline-flex; align-items: center; }
+.cal-day.partial { background: rgba(var(--accent-rgb), 0.28); border-color: transparent; }
+.leg { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 10px; vertical-align: -1px; }
+.leg-ok { background: var(--amber); margin-left: 0; }
+.leg-part { background: rgba(var(--accent-rgb), 0.45); }
+.bar.under { opacity: 0.55; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.tag-pill { display: inline-flex; align-items: center; gap: 4px; padding: 4px 4px 4px 12px; border: 1px solid var(--border); border-radius: 999px; font-size: 13px; }
+.tag-pill button { border: none; background: none; color: var(--ink-dim); width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 13px; }
+
+/* Uhrzeit-Auswahl (24 Stunden) */
+.time-input.tp { cursor: pointer; text-align: left; }
+.tp-date { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0 8px; font-weight: 600; }
+.tp-date .btn { min-width: 44px; padding: 8px 0; font-size: 20px; }
+.tp-digits { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 44px; font-weight: 700; margin: 6px 0; }
+.tp-digits input { width: 84px; text-align: center; font: inherit; font-variant-numeric: tabular-nums; color: var(--ink-dim); background: var(--bg); border: 2px solid transparent; border-radius: 14px; padding: 4px 0; }
+.tp-digits input.on { color: var(--bg); background: var(--sage); }
+.tp-dial { display: block; width: min(100%, 280px); margin: 8px auto 12px; user-select: none; -webkit-user-select: none; }
+.tp-face { fill: var(--bg); }
+.tp-hand { stroke: var(--sage); stroke-width: 2; }
+.tp-hub { fill: var(--sage); }
+.tp-sel { fill: var(--sage); }
+.tp-none { fill: transparent; }
+.tp-num { text-anchor: middle; font-size: 15px; fill: var(--ink); pointer-events: none; font-variant-numeric: tabular-nums; }
+.tp-num.in { font-size: 13px; fill: var(--ink-dim); }
+.tp-num.on { fill: var(--bg); font-weight: 700; }
