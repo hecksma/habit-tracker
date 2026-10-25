@@ -12,8 +12,10 @@
 // gesichert. Schließt du die App mitten im Training, geht es danach genau da weiter.
 // Erst "Training beenden" macht daraus einen Eintrag im Verlauf.
 //   active = { name, routineId, start, restEnd, restTotal,
-//              entries: [{ exerciseId, sets: [{ kg, reps, done }] }] }
+//              entries: [{ exerciseId, sets: [{ kg, reps, pk, pr, done }] }] }
 // kg und reps bleiben als Text, so wie du sie tippst. Umgerechnet wird erst beim Beenden.
+// pk und pr sind die Vorschläge vom letzten Mal. Sie erscheinen nur blass im leeren Feld.
+// Tippst du nichts ein und hakst den Satz ab, gelten die Vorschläge als eingetragen.
 
 const ACTIVE_KEY = 'maximize-gym-active';
 let active = null;
@@ -31,7 +33,7 @@ function sanitizeActive(a) {
   const entries = (Array.isArray(a.entries) ? a.entries : []).slice(0, 60)
     .filter(en => en && exById(en.exerciseId))
     .map(en => ({ exerciseId: en.exerciseId, sets: (Array.isArray(en.sets) ? en.sets : []).slice(0, 60)
-      .map(st => ({ kg: txt(st && st.kg), reps: txt(st && st.reps), done: !!(st && st.done === true) })) }));
+      .map(st => ({ kg: txt(st && st.kg), reps: txt(st && st.reps), pk: txt(st && st.pk), pr: txt(st && st.pr), done: !!(st && st.done === true) })) }));
   return {
     name: (typeof a.name === 'string' && a.name.trim()) ? a.name.trim().slice(0, 60) : 'Training',
     routineId: (typeof a.routineId === 'string' && ID_RE.test(a.routineId)) ? a.routineId : null,
@@ -68,8 +70,9 @@ function makeEntry(exId, count) {
   for (let i = 0; i < n; i++) {
     const base = last[i] || last[last.length - 1] || null;
     sets.push({
-      kg: base && base.kg !== null ? numText(base.kg) : '',
-      reps: base && base.reps !== null ? String(base.reps) : '',
+      kg: '', reps: '',
+      pk: base && base.kg !== null ? numText(base.kg) : '',
+      pr: base && base.reps !== null ? String(base.reps) : '',
       done: false
     });
   }
@@ -77,6 +80,8 @@ function makeEntry(exId, count) {
 }
 
 function startWorkout(routine) {
+  if (active) return; // es läuft immer nur ein Training
+  gymState.page = 'workout';
   active = {
     name: routine ? routine.name : 'Training',
     routineId: routine ? routine.id : null,
@@ -93,7 +98,8 @@ function startWorkout(routine) {
 
 function renderActive(el) {
   document.getElementById('gymSubtitle').hidden = currentView !== 'gym';
-  let html = '<div class="stats-title" style="margin-top:20px;">' + escapeHtml(active.name) + '</div>';
+  let html = '<div class="start-row" style="justify-content:flex-start;margin-top:18px;"><button type="button" class="tool-btn" data-act="wk-home">‹ Übersicht</button></div>'
+    + '<div class="stats-title" style="margin-top:16px;">' + escapeHtml(active.name) + '</div>';
   active.entries.forEach((en, i) => {
     const ex = exById(en.exerciseId);
     const last = lastSets(en.exerciseId);
@@ -105,8 +111,8 @@ function renderActive(el) {
       const prevTxt = prev ? ((prev.kg !== null && prev.reps !== null) ? numText(prev.kg) + ' × ' + prev.reps : setText(prev)) : '–';
       html += '<div class="set-row' + (st.done ? ' done' : '') + '"><span class="set-no">' + (j + 1) + '</span>'
         + '<span class="set-prev">' + prevTxt + '</span>'
-        + '<input class="num-input" inputmode="decimal" data-f="kg" data-ex="' + i + '" data-set="' + j + '" value="' + escapeHtml(st.kg) + '" aria-label="Gewicht in kg, Satz ' + (j + 1) + '" />'
-        + '<input class="num-input" inputmode="numeric" data-f="reps" data-ex="' + i + '" data-set="' + j + '" value="' + escapeHtml(st.reps) + '" aria-label="Wiederholungen, Satz ' + (j + 1) + '" />'
+        + '<input class="num-input" inputmode="decimal" data-f="kg" data-ex="' + i + '" data-set="' + j + '" value="' + escapeHtml(st.kg) + '" placeholder="' + escapeHtml(st.pk || '') + '" aria-label="Gewicht in kg, Satz ' + (j + 1) + '" />'
+        + '<input class="num-input" inputmode="numeric" data-f="reps" data-ex="' + i + '" data-set="' + j + '" value="' + escapeHtml(st.reps) + '" placeholder="' + escapeHtml(st.pr || '') + '" aria-label="Wiederholungen, Satz ' + (j + 1) + '" />'
         + '<button type="button" class="set-check" data-act="toggle-set" data-ex="' + i + '" data-set="' + j + '" aria-pressed="' + st.done + '" aria-label="Satz ' + (j + 1) + ' abgeschlossen">✓</button></div>';
     });
     html += '<div class="wk-ex-actions"><button type="button" class="tool-btn" data-act="add-set" data-ex="' + i + '">+ Satz</button>'
@@ -118,12 +124,21 @@ function renderActive(el) {
   el.innerHTML = html;
 }
 
-function updateActiveSubtitle() {
-  if (!active || gymState.page !== 'home') return; // auf einer Übungsseite steht dort deren Untertitel
+function activeSummary() {
   let done = 0, total = 0;
   active.entries.forEach(en => en.sets.forEach(st => { total++; if (st.done) done++; }));
+  return clock(Date.now() - active.start) + ' · ' + done + ' von ' + total + ' Sätzen';
+}
+
+function updateActiveSubtitle() {
+  if (!active) return;
+  const text = activeSummary();
+  // Hinweis-Banner auf der Startseite (falls sichtbar)
+  const rb = document.getElementById('runSub');
+  if (rb && rb.textContent !== text) rb.textContent = text;
+  // Untertitel nur im Training selbst, sonst steht dort etwas anderes
+  if (gymState.page !== 'workout') return;
   const sub = document.getElementById('gymSubtitle');
-  const text = clock(Date.now() - active.start) + ' · ' + done + ' von ' + total + ' Sätzen';
   if (sub.textContent !== text) sub.textContent = text; // nur schreiben, wenn sich etwas ändert
 }
 
@@ -188,26 +203,57 @@ function prepareAudio() {
   } catch (e) { /* ohne Ton geht es auch */ }
 }
 
-function beep() {
+// Töne laufen über einen gemeinsamen Ablauf: Kontext wecken, Ton spielen, danach wieder ruhen
+// lassen, damit Musik und andere Apps nicht gestört werden.
+let suspendTimer = null;
+function playSound(build, ms) {
   if (!audioCtx) return;
   try {
     audioCtx.resume().then(() => {
-      const t0 = audioCtx.currentTime;
-      [0, 0.26, 0.52].forEach((d, i) => {
-        const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = i === 2 ? 1175 : 880;
-        gain.gain.setValueAtTime(0.0001, t0 + d);
-        gain.gain.exponentialRampToValueAtTime(0.5, t0 + d + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.2);
-        osc.connect(gain).connect(audioCtx.destination);
-        osc.start(t0 + d);
-        osc.stop(t0 + d + 0.22);
-      });
-      // Danach wieder ruhen lassen, damit Musik und andere Apps nicht gestört werden
-      setTimeout(() => { try { audioCtx.suspend(); } catch (e) { /* egal */ } }, 1100);
+      build(audioCtx, audioCtx.currentTime);
+      clearTimeout(suspendTimer);
+      suspendTimer = setTimeout(() => { try { audioCtx.suspend(); } catch (e) { /* egal */ } }, ms);
     }).catch(() => {});
   } catch (e) { /* ohne Ton geht es auch */ }
+}
+
+// Pausen-Ende: eine kurze Glocke wie im Boxring, dreimal schnell angeschlagen.
+// Eine Glocke klingt metallisch, weil sie mehrere Töne gleichzeitig hat, die nicht zueinander passen.
+// Jeder Teilton klingt schnell ab, die tiefen etwas länger.
+function beep() {
+  playSound((ctx, t0) => {
+    const partials = [[1, 1, 0.9], [2.76, 0.65, 0.6], [5.4, 0.4, 0.35], [8.93, 0.22, 0.2]]; // Verhältnis, Lautstärke, Dauer
+    [0, 0.2, 0.4].forEach(d => {
+      partials.forEach(([ratio, vol, dur]) => {
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 780 * ratio;
+        gain.gain.setValueAtTime(0.0001, t0 + d);
+        gain.gain.exponentialRampToValueAtTime(0.32 * vol, t0 + d + 0.004);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + d + dur);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t0 + d);
+        osc.stop(t0 + d + dur + 0.02);
+      });
+    });
+  }, 1700);
+}
+
+// Satz abgehakt: ein ganz kurzes, leises Klicken als Rückmeldung
+function playTick() {
+  if (!settings.sound) return;
+  playSound((ctx, t0) => {
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(1500, t0);
+    osc.frequency.exponentialRampToValueAtTime(900, t0 + 0.05);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.25, t0 + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.07);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + 0.08);
+  }, 300);
 }
 
 function alertRestOver() {
@@ -237,6 +283,7 @@ document.addEventListener('visibilitychange', () => {
 
 function endWorkout() {
   active = null; saveActive(); releaseScreen(); restAlerted = true;
+  gymState.page = 'home'; gymState.tab = 'train';
   renderGym(); updateRestBar();
   window.scrollTo(0, 0);
 }
@@ -253,6 +300,14 @@ document.getElementById('updNo').addEventListener('click', () => { document.getE
 document.getElementById('updYes').addEventListener('click', () => { document.getElementById('updSheet').close(); finishWorkout(true); });
 document.getElementById('updSheet').addEventListener('click', (e) => { if (e.target.id === 'updSheet') e.target.close(); });
 
+// Tageszeit für den Namen im Verlauf (nach dem Start des Trainings)
+function partOfDay(hour) {
+  if (hour >= 5 && hour < 11) return 'Morgens';
+  if (hour >= 11 && hour < 16) return 'Mittags';
+  if (hour >= 16 && hour < 22) return 'Abends';
+  return 'Nachts';
+}
+
 function finishWorkout(updateRoutine) {
   const d = new Date(active.start);
   const entries = active.entries.map(en => ({
@@ -262,7 +317,7 @@ function finishWorkout(updateRoutine) {
   const w = {
     id: 'w' + active.start.toString(36) + Math.random().toString(36).slice(2, 6),
     date: fmt(d) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()),
-    name: active.name, routineId: active.routineId,
+    name: (active.name + ' ' + partOfDay(d.getHours())).slice(0, 60), routineId: active.routineId,
     durationSec: Math.round((Date.now() - active.start) / 1000), entries
   };
   const clean = sanitizeGym({ exercises: gym.exercises, routines: gym.routines, workouts: [w] });
@@ -290,8 +345,12 @@ document.getElementById('gymContent').addEventListener('click', (e) => {
   const entry = active && active.entries[ei];
   if (act === 'more') { gymState.shown += 20; renderGym(); }
   else if (act === 'import') renderSettingsForGym();
-  else if (act === 'start') { const r = gym.routines.find(x => x.id === b.dataset.id); if (r) startWorkout(r); }
-  else if (act === 'start-empty') startWorkout(null);
+  else if (act === 'resume') { gymState.page = 'workout'; renderGym(); window.scrollTo(0, 0); }
+  else if (act === 'wk-home') { gymState.page = 'home'; renderGym(); window.scrollTo(0, 0); }
+  else if (act === 'gcal-month') { shiftGymMonth(Number(b.dataset.dir)); }
+  else if (act === 'gcal-day') { gymState.calSel = gymState.calSel === b.dataset.date ? null : b.dataset.date; renderGym(); }
+  else if (act === 'start') { if (active) return; const r = gym.routines.find(x => x.id === b.dataset.id); if (r) startWorkout(r); }
+  else if (act === 'start-empty') { if (!active) startWorkout(null); }
   else if (act === 'new-ex') openExSheet(null);
   else if (act === 'edit-ex') openExSheet(b.dataset.id);
   else if (act === 'new-routine') openRoutineSheet(null);
@@ -304,7 +363,11 @@ document.getElementById('gymContent').addEventListener('click', (e) => {
     const st = entry.sets[si];
     st.done = !st.done;
     if (st.done) {
+      // Nichts eingetippt? Dann gelten die Vorschläge vom letzten Mal
+      if (!st.kg && st.pk) st.kg = st.pk;
+      if (!st.reps && st.pr) st.reps = st.pr;
       prepareAudio();
+      playTick();
       const ex = exById(entry.exerciseId);
       startRest(ex && ex.rest ? ex.rest : 90);
     }
@@ -312,7 +375,7 @@ document.getElementById('gymContent').addEventListener('click', (e) => {
   }
   else if (act === 'add-set' && entry) {
     const prev = entry.sets[entry.sets.length - 1];
-    entry.sets.push({ kg: prev ? prev.kg : '', reps: prev ? prev.reps : '', done: false });
+    entry.sets.push({ kg: '', reps: '', pk: prev ? (prev.kg || prev.pk) : '', pr: prev ? (prev.reps || prev.pr) : '', done: false });
     saveActive(); renderGym();
   }
   else if (act === 'del-set' && entry && entry.sets.length > 1) { entry.sets.pop(); saveActive(); renderGym(); }
@@ -347,6 +410,12 @@ document.getElementById('gymContent').addEventListener('input', (e) => {
   if (st) { st[inp.dataset.f] = inp.value.slice(0, 8); saveActive(); }
 });
 
+// Tippst du in ein Zahlenfeld mit Inhalt, ist der Inhalt markiert: die neue Zahl ersetzt ihn direkt
+document.getElementById('gymContent').addEventListener('focusin', (e) => {
+  const inp = e.target.closest('.num-input');
+  if (inp) setTimeout(() => { try { inp.select(); } catch (err) { /* egal */ } }, 0);
+});
+
 document.getElementById('gymContent').addEventListener('input', (e) => {
   if (e.target.id !== 'exFilter') return;
   gymState.exFilter = e.target.value;
@@ -354,7 +423,8 @@ document.getElementById('gymContent').addEventListener('input', (e) => {
 });
 
 document.getElementById('exercisesBtn').addEventListener('click', () => {
-  gymState.page = gymState.page === 'home' ? 'exercises' : 'home';
+  gymState.page = gymState.page === 'exercises' ? 'home' : 'exercises';
+  gymState.tab = 'train';
   renderGym();
   window.scrollTo(0, 0);
 });
@@ -434,9 +504,12 @@ document.getElementById('exForm').addEventListener('submit', (e) => {
 
 const pickSheet = document.getElementById('pickSheet');
 
+let pickGroup = '';
 function renderPick() {
   const q = document.getElementById('pickFilter').value.trim().toLowerCase();
-  const list = gym.exercises.filter(e => e.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  document.getElementById('pickGroups').innerHTML = ['', ...MUSCLE_GROUPS].map(g =>
+    '<button type="button" class="chip" data-g="' + g + '" aria-pressed="' + (pickGroup === g) + '">' + (g || 'Alle') + '</button>').join('');
+  const list = gym.exercises.filter(e => e.name.toLowerCase().includes(q) && (!pickGroup || e.group === pickGroup)).sort((a, b) => a.name.localeCompare(b.name, 'de'));
   document.getElementById('pickList').innerHTML = list.length
     ? list.map(e => '<button type="button" class="ex-row" data-id="' + e.id + '"><span><span class="ex-name">' + escapeHtml(e.name) + '</span>' + (e.group ? '<span class="log-sub">' + e.group + '</span>' : '') + '</span></button>').join('')
     : '<p class="hint">Nichts gefunden. Mit "Neue Übung" legst du sie an.</p>';
@@ -446,6 +519,7 @@ let pickCb = null;
 function openPick(cb) {
   pickCb = cb || addToWorkout;
   document.getElementById('pickFilter').value = '';
+  pickGroup = '';
   renderPick();
   pickSheet.showModal();
   document.getElementById('pickTitle').focus({ preventScroll: true });
@@ -458,6 +532,12 @@ function addToWorkout(exId) {
 }
 
 document.getElementById('pickFilter').addEventListener('input', renderPick);
+document.getElementById('pickGroups').addEventListener('click', (e) => {
+  const b = e.target.closest('.chip');
+  if (!b) return;
+  pickGroup = b.dataset.g;
+  renderPick();
+});
 document.getElementById('pickList').addEventListener('click', (e) => {
   const b = e.target.closest('.ex-row');
   if (!b) return;

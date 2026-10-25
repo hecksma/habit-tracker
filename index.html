@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Maximize</title>
 <!-- Farbe der Statusleiste auf dem Handy, passend zum Hintergrund -->
-<meta name="theme-color" content="#1C2B27" />
+<meta name="theme-color" id="themeColor" content="#1C2B27" />
 <!-- Verweis auf die manifest.json: Sie sagt Android, wie die App heißt und aussieht, wenn sie installiert wird -->
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" href="icon-192.png" />
@@ -63,6 +63,12 @@
 </section>
 
 <section id="view-gym" hidden>
+  <!-- Umschalter innerhalb des Gyms: Training (Startseite) oder Statistik -->
+  <div class="seg gym-tabs" id="gymTabs" role="group" aria-label="Ansicht">
+    <button type="button" data-gtab="train" aria-pressed="true">Training</button>
+    <button type="button" data-gtab="stats" aria-pressed="false">Statistik</button>
+  </div>
+
   <div id="gymContent"></div>
 </section>
 
@@ -216,6 +222,7 @@
 <dialog id="pickSheet" aria-labelledby="pickTitle">
   <h2 id="pickTitle" tabindex="-1" autofocus>Übung hinzufügen</h2>
   <input type="search" id="pickFilter" class="text-input" placeholder="Suchen" autocomplete="off" aria-label="Übung suchen" style="margin-top:0;" />
+  <div class="chips wrap" id="pickGroups" role="group" aria-label="Muskelgruppe filtern" style="margin:8px 0;"></div>
   <div class="pick-list" id="pickList"></div>
   <div class="sheet-actions">
     <button type="button" class="btn" id="pickNew">Neue Übung</button>

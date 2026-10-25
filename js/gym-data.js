@@ -19,7 +19,9 @@
 
 const GYM_KEY = 'maximize-gym';
 let gym = { exercises: [], routines: [], workouts: [] };
-const gymState = { shown: 20, page: 'home', exId: null, exFilter: '', exGroup: '', exShown: 10 };
+// page: 'home' (Startseite), 'workout' (laufendes Training), 'exercises' (Übungsliste), 'exercise' (eine Übung)
+// tab: 'train' (Startseite) oder 'stats' (Statistik), gilt nur auf der Startseite
+const gymState = { shown: 20, page: 'home', tab: 'train', backPage: 'exercises', calMonth: null, calSel: null, exId: null, exFilter: '', exGroup: '', exShown: 10 };
 
 // Muskelgruppen: Jede Übung hat genau eine (oder keine). Cardio gilt hier auch als Gruppe.
 const MUSCLE_GROUPS = ['Brust', 'Rücken', 'Schultern', 'Bizeps', 'Trizeps', 'Arme', 'Quadrizeps', 'Beinbeuger', 'Beine', 'Bauch', 'Cardio'];

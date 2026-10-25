@@ -41,6 +41,7 @@ showTodayLabel();
 loadSettings();
 loadGym();
 loadActive();
+if (active) gymState.page = 'workout'; // läuft ein Training, geht es nach dem Öffnen dort weiter
 loadHabits();
 // Bittet den Browser, die Daten nicht von selbst zu löschen, wenn der Speicher knapp wird
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});

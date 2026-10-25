@@ -87,9 +87,11 @@ function renderGym() {
   updateGymNav();
   // Eine Übungsseite kann auch während eines Trainings geöffnet sein (Tipp auf den Übungsnamen)
   if (gymState.page === 'exercise' && exById(gymState.exId)) { renderExerciseDetail(el); return; }
-  if (active) { gymState.page = 'home'; renderActive(el); updateActiveSubtitle(); updateRestBar(); return; }
+  if (gymState.page === 'workout' && active) { renderActive(el); updateActiveSubtitle(); updateRestBar(); return; }
+  if (gymState.page === 'workout') gymState.page = 'home';
   if (gymState.page === 'exercises') { renderExercisesPage(el); return; }
   gymState.page = 'home';
+  if (gymState.tab === 'stats') { renderGymStats(el); return; }
 
   const sub = document.getElementById('gymSubtitle');
   const names = new Map(gym.exercises.map(e => [e.id, e.name]));
@@ -101,7 +103,7 @@ function renderGym() {
     sub.textContent = 'Noch keine Trainings.';
   }
 
-  let html = '';
+  let html = runBannerHtml();
   if (!gym.workouts.length && !gym.routines.length && !gym.exercises.length) {
     html += '<div class="empty-state" style="padding:28px 10px 8px;"><div class="big">Noch keine Trainingsdaten</div>'
       + 'Du kannst Routinen und Übungen selbst anlegen oder deinen bisherigen Verlauf aus einer CSV-Datei übernehmen.'
@@ -115,12 +117,12 @@ function renderGym() {
       + '<button type="button" class="icon-btn small" data-act="edit-routine" data-id="' + r.id + '" aria-label="Routine ' + escapeHtml(r.name) + ' bearbeiten">' + PENCIL_ICON + '</button></div>'
       + '<p class="routine-sub">' + r.items.length + ' Übungen: ' + escapeHtml(r.items.map(it => names.get(it.exerciseId) || 'Übung').join(', ')) + '</p>'
       + '<p class="routine-last">' + (done ? 'Zuletzt: ' + workoutDateText(done) : 'Noch nicht trainiert') + '</p>'
-      + '<div class="start-row"><button type="button" class="btn primary" data-act="start" data-id="' + r.id + '">Starten</button></div></div>';
+      + '<div class="start-row"><button type="button" class="btn primary" data-act="start" data-id="' + r.id + '"' + (active ? ' disabled' : '') + '>Starten</button></div></div>';
   }).join('');
   html += '<div class="start-row"><button type="button" class="tool-btn" data-act="new-routine">+ Routine erstellen</button></div>';
 
   html += '<div class="stats-title">Ohne Routine</div>'
-    + '<div class="start-row"><button type="button" class="btn" data-act="start-empty">Leeres Training starten</button></div>';
+    + '<div class="start-row"><button type="button" class="btn" data-act="start-empty"' + (active ? ' disabled' : '') + '>Leeres Training starten</button></div>';
 
   if (sorted.length) {
     html += '<div class="stats-title">Verlauf</div>' + sorted.slice(0, gymState.shown).map(w => renderWorkout(w, names)).join('');
@@ -134,8 +136,19 @@ function renderGym() {
 // Der Knopf oben neben den Einstellungen: Übungen öffnen / zurück zur Startseite
 function updateGymNav() {
   const b = document.getElementById('exercisesBtn');
-  b.hidden = !(currentView === 'gym' && !active);
-  b.setAttribute('aria-pressed', String(gymState.page !== 'home'));
+  b.hidden = !(currentView === 'gym' && gymState.page !== 'workout');
+  b.setAttribute('aria-pressed', String(gymState.page === 'exercises'));
+  // Der Umschalter Training / Statistik gehört nur zur Startseite
+  const tabs = document.getElementById('gymTabs');
+  tabs.hidden = gymState.page !== 'home';
+  tabs.querySelectorAll('button').forEach(t => t.setAttribute('aria-pressed', String(t.dataset.gtab === gymState.tab)));
+}
+
+// Hinweis oben, solange ein Training läuft: ein Tipp führt zurück ins Training
+function runBannerHtml() {
+  if (!active) return '';
+  return '<button type="button" class="run-banner" data-act="resume"><span><span class="rb-title"><span class="dot"></span>Training läuft: ' + escapeHtml(active.name) + '</span><br />'
+    + '<span class="rb-sub" id="runSub">' + escapeHtml(activeSummary()) + '</span></span><span class="rb-go">Zurück ›</span></button>';
 }
 
 // ---- Übungen: eigene Seite im Gym-Bereich ----
@@ -225,13 +238,14 @@ document.addEventListener('pointermove', (e) => { if (scrubbing) selectChartPoin
 
 // Zurück von einer Übungsseite: ins Training (falls eines läuft) oder zur Übungsliste, an der alten Scroll-Position
 function leaveExercise() {
-  gymState.page = active ? 'home' : 'exercises';
+  gymState.page = (gymState.backPage === 'workout' && active) ? 'workout' : 'exercises';
   renderGym();
   window.scrollTo(0, gymState.backScroll || 0);
 }
 
 function openExercise(id) {
   gymState.backScroll = window.scrollY;
+  gymState.backPage = gymState.page === 'workout' ? 'workout' : 'exercises';
   gymState.page = 'exercise';
   gymState.exId = id;
   gymState.exShown = 10;
@@ -246,7 +260,7 @@ function renderExerciseDetail(el) {
   const tops = sessions.filter(s => s.top !== null);
   const best = tops.length ? tops.reduce((a, b) => (b.top > a.top ? b : a)) : null;
   let html = '<div class="start-row" style="justify-content:space-between;margin-top:18px;">'
-    + '<button type="button" class="tool-btn" data-act="back">' + (active ? '‹ Training' : '‹ Übungen') + '</button>'
+    + '<button type="button" class="tool-btn" data-act="back">' + (gymState.backPage === 'workout' && active ? '‹ Training' : '‹ Übungen') + '</button>'
     + '<button type="button" class="tool-btn" data-act="edit-ex" data-id="' + ex.id + '">Bearbeiten</button></div>'
     + '<div class="stats-title" style="margin-top:16px;margin-bottom:2px;">' + escapeHtml(ex.name) + '</div>'
     + '<p class="routine-last" style="margin:0 0 12px;">' + (ex.group || 'Keine Muskelgruppe') + (ex.rest ? ' · Pause ' + clock(ex.rest * 1000) : '') + '</p>'
@@ -267,3 +281,147 @@ function renderExerciseDetail(el) {
   }
   el.innerHTML = html;
 }
+
+
+// ======================================================================
+// 10c) Gym: Statistik (Kalender, Zahlen, Wochen, Muskelgruppen)
+// ======================================================================
+
+// Trainings pro Tag: { 'YYYY-MM-DD': [Workout, ...] }
+function workoutsByDay() {
+  const map = {};
+  gym.workouts.forEach(w => { (map[w.date.slice(0, 10)] = map[w.date.slice(0, 10)] || []).push(w); });
+  return map;
+}
+
+function shiftGymMonth(dir) {
+  const cur = todayStr().slice(0, 7);
+  const [y, m] = (gymState.calMonth || cur).split('-').map(Number);
+  const d = new Date(y, m - 1 + dir, 1, 12);
+  gymState.calMonth = d.getFullYear() + '-' + pad(d.getMonth() + 1);
+  gymState.calSel = null;
+  renderGym();
+}
+
+function gymCalendarHtml(byDay, today) {
+  const cur = today.slice(0, 7);
+  const firstKey = Object.keys(byDay).sort()[0];
+  const firstMonth = firstKey ? firstKey.slice(0, 7) : cur;
+  let ym = gymState.calMonth || cur;
+  if (ym > cur) ym = cur;
+  if (ym < firstMonth) ym = firstMonth;
+  gymState.calMonth = ym;
+  const [y, m] = ym.split('-').map(Number);
+  const monthStart = new Date(y, m - 1, 1, 12);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const label = monthStart.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+  let cells = DAY_LABELS.map(l => '<span class="cal-wd">' + l + '</span>').join('');
+  for (let i = 0; i < weekdayIdx(monthStart); i++) cells += '<span></span>';
+  let count = 0;
+  for (let n = 1; n <= daysInMonth; n++) {
+    const key = fmt(new Date(y, m - 1, n, 12));
+    const trained = !!byDay[key];
+    if (trained) count++;
+    const cls = ['cal-day'];
+    if (trained) cls.push('trained');
+    if (key === today) cls.push('today');
+    if (key === gymState.calSel) cls.push('sel');
+    cells += '<button type="button" class="' + cls.join(' ') + '" data-act="gcal-day" data-date="' + key + '"'
+      + ' aria-label="' + n + '. ' + label + ': ' + (trained ? 'Training' : 'kein Training') + '"' + (key > today ? ' disabled' : '') + '>' + n + '</button>';
+  }
+  let html = '<div class="cal-head">'
+    + '<button type="button" class="cal-nav" data-act="gcal-month" data-dir="-1" aria-label="Vorheriger Monat"' + (ym <= firstMonth ? ' disabled' : '') + '>‹</button>'
+    + '<span>' + label + ' · ' + count + (count === 1 ? ' Training' : ' Trainings') + '</span>'
+    + '<button type="button" class="cal-nav" data-act="gcal-month" data-dir="1" aria-label="Nächster Monat"' + (ym >= cur ? ' disabled' : '') + '>›</button>'
+    + '</div><div class="cal">' + cells + '</div>';
+  // Angetippter Tag: die Trainings dieses Tages
+  if (gymState.calSel) {
+    const names = new Map(gym.exercises.map(e => [e.id, e.name]));
+    const list = byDay[gymState.calSel] || [];
+    html += '<div class="day-list">' + (list.length
+      ? list.map(w => renderWorkout(w, names)).join('')
+      : '<p class="hint">Am ' + longDate(gymState.calSel) + ' war kein Training.</p>') + '</div>';
+  }
+  return html;
+}
+
+// Balken: Trainings pro Woche. Gleiche Optik wie die Balken bei den Habits.
+function weekBarsHtml(items) {
+  const max = Math.max(1, ...items.map(i => i.count));
+  return '<div class="chart" role="img" aria-label="Trainings pro Woche">' + items.map(it => {
+    const tip = it.tip ? ' data-tip="' + escapeHtml(it.tip) + '" tabindex="0" role="button" aria-label="' + escapeHtml(it.tip) + '"' : '';
+    return '<div class="bar-col' + (it.count ? '' : ' empty') + '"' + tip + '>'
+      + '<span class="bar-val">' + it.count + '</span>'
+      + '<span class="bar-track"><span class="bar" style="height:' + Math.max(Math.round(100 * it.count / max), 2) + '%"></span></span>'
+      + '<span class="bar-label">' + it.label + '</span></div>';
+  }).join('') + '</div>';
+}
+
+function renderGymStats(el) {
+  const sub = document.getElementById('gymSubtitle');
+  if (!gym.workouts.length) {
+    sub.textContent = 'Noch keine Trainings.';
+    el.innerHTML = '<div class="empty-state"><div class="big">Noch keine Statistik</div>Sobald du ein Training beendet hast, siehst du hier deinen Kalender und deine Zahlen.</div>';
+    return;
+  }
+  const today = todayStr();
+  const todayD = parseDate(today);
+  const byDay = workoutsByDay();
+  const days = Object.keys(byDay);
+  sub.textContent = gym.workouts.length + ' Trainings an ' + days.length + ' Tagen';
+
+  // Wochen (Montag als Start), in denen trainiert wurde
+  const weeks = new Set(days.map(k => fmt(weekStart(parseDate(k)))));
+  const thisWeek = weekStart(todayD);
+  let streak = 0, w = weeks.has(fmt(thisWeek)) ? thisWeek : addDays(thisWeek, -7);
+  while (weeks.has(fmt(w))) { streak++; w = addDays(w, -7); }
+
+  // Letzte 12 Wochen
+  const items = [];
+  for (let i = 11; i >= 0; i--) {
+    const ws = addDays(thisWeek, -7 * i), key = fmt(ws), we = fmt(addDays(ws, 6));
+    const count = days.filter(k => k >= key && k <= we).length;
+    const lbl = ws.getDate() + '.' + (ws.getMonth() + 1) + '.';
+    items.push({ count, label: i % 2 === 0 ? lbl : '', tip: 'Woche ab ' + lbl + ': ' + count + (count === 1 ? ' Training' : ' Trainings') });
+  }
+  const first = days.slice().sort()[0];
+  const weeksSince = Math.max(1, Math.min(12, Math.floor((thisWeek - weekStart(parseDate(first))) / 6048e5) + 1));
+  const avg = items.reduce((a, b) => a + b.count, 0) / weeksSince;
+  const monthKey = today.slice(0, 7);
+  const thisMonth = days.filter(k => k.slice(0, 7) === monthKey).length;
+
+  // Sätze pro Muskelgruppe in den letzten 30 Tagen
+  const since = fmt(addDays(todayD, -29));
+  const perGroup = {};
+  gym.workouts.forEach(wk => {
+    if (wk.date.slice(0, 10) < since) return;
+    wk.entries.forEach(en => {
+      const ex = exById(en.exerciseId);
+      const g = (ex && ex.group) || 'Ohne Gruppe';
+      perGroup[g] = (perGroup[g] || 0) + en.sets.length;
+    });
+  });
+  const groups = Object.keys(perGroup).sort((a, b) => perGroup[b] - perGroup[a]);
+  const gmax = groups.length ? perGroup[groups[0]] : 1;
+
+  el.innerHTML = '<div class="stats-title" style="margin-top:20px;">Kalender</div>' + gymCalendarHtml(byDay, today)
+    + '<div class="stats-title">Zahlen</div><div class="stat-grid">'
+    + '<div class="stat-card"><div class="stat-value">' + gym.workouts.length + '</div><div class="stat-label">Trainings gesamt</div></div>'
+    + '<div class="stat-card"><div class="stat-value">' + thisMonth + '</div><div class="stat-label">Tage diesen Monat</div></div>'
+    + '<div class="stat-card"><div class="stat-value">' + nf.format(Math.round(avg * 10) / 10) + '</div><div class="stat-label">Ø pro Woche</div><div class="stat-sub">letzte ' + weeksSince + ' Wochen</div></div>'
+    + '<div class="stat-card"><div class="stat-value">' + streak + '</div><div class="stat-label">Wochen in Folge</div><div class="stat-sub">mit mindestens 1 Training</div></div>'
+    + '</div>'
+    + '<div class="stats-title">Trainingstage pro Woche</div>' + weekBarsHtml(items)
+    + '<div class="stats-title">Sätze pro Muskelgruppe</div><p class="stats-note" style="margin:-6px 2px 8px;">Letzte 30 Tage</p>'
+    + (groups.length ? groups.map(g => '<div class="grp-row"><span>' + escapeHtml(g) + '</span><span class="grp-bar"><span style="width:' + Math.max(Math.round(100 * perGroup[g] / gmax), 3) + '%"></span></span><span class="grp-num">' + perGroup[g] + '</span></div>').join('')
+        : '<p class="hint">In den letzten 30 Tagen war kein Training.</p>');
+}
+
+// Umschalter Training / Statistik
+document.getElementById('gymTabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-gtab]');
+  if (!b) return;
+  gymState.tab = b.dataset.gtab === 'stats' ? 'stats' : 'train';
+  renderGym();
+  window.scrollTo(0, 0);
+});

@@ -28,6 +28,10 @@ function setView(name) {
   subtitleEl.hidden = name !== 'habits';
   document.getElementById('gymSubtitle').hidden = name !== 'gym';
   currentView = name;
+  // Jeder Bereich hat sein eigenes Farbschema (siehe :root[data-area] in style.css)
+  document.documentElement.dataset.area = name;
+  const tc = document.getElementById('themeColor');
+  if (tc) tc.content = name === 'gym' ? '#171B2E' : '#1C2B27';
   if (name !== 'gym' && typeof gymState !== 'undefined') gymState.page = 'home';
   updateChrome();
   if (name === 'gym') renderGym();
@@ -40,7 +44,7 @@ document.querySelector('.tabbar').addEventListener('click', (e) => {
   if (!tab) return;
   // Ein Tipp auf das Symbol bringt immer zum ersten Bildschirm des Bereichs,
   // auch wenn man schon im Bereich ist (z. B. in einer Übung oder in der Statistik).
-  if (tab.dataset.view === 'gym') gymState.page = 'home';
+  if (tab.dataset.view === 'gym') { gymState.page = 'home'; gymState.tab = 'train'; }
   if (tab.dataset.view === 'habits') setHabitsTab('today');
   setView(tab.dataset.view);
 });
@@ -89,8 +93,11 @@ window.addEventListener('popstate', () => {
   else if (currentView === 'gym' && gymState.page === 'exercise') {
     leaveExercise();
   }
-  else if (currentView === 'gym' && !active && gymState.page === 'exercises') {
+  else if (currentView === 'gym' && (gymState.page === 'exercises' || gymState.page === 'workout')) {
     gymState.page = 'home'; renderGym(); window.scrollTo(0, 0);
+  }
+  else if (currentView === 'gym' && gymState.tab === 'stats') {
+    gymState.tab = 'train'; renderGym(); window.scrollTo(0, 0);
   }
   // 3) vom Gym-Hauptbildschirm zu den Habits
   else if (currentView === 'gym') {
