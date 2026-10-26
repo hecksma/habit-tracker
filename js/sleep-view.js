@@ -36,23 +36,15 @@ function defaultWakeTime() {
   return sleep.wakeByWeekday[wd] || '07:00';
 }
 
-// Link, der die Wecker-App von Android öffnet (nur ein Versuch: ob Chrome das erlaubt, hängt vom Handy ab)
-function alarmLink(timeStr, show) {
-  const fb = 'S.browser_fallback_url=' + encodeURIComponent(location.href.split('#')[0]);
-  if (show) return 'intent:#Intent;action=android.intent.action.SHOW_ALARMS;' + fb + ';end';
-  return 'intent:#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR=' + (+timeStr.slice(0, 2))
-    + ';i.android.intent.extra.alarm.MINUTES=' + (+timeStr.slice(3, 5)) + ';S.android.intent.extra.alarm.MESSAGE=Maximize;B.android.intent.extra.alarm.SKIP_UI=false;' + fb + ';end';
-}
-
 // ---- Speichern einer Nacht ----
 
 function finishNight(wakeMs, how) {
   if (!sleepActive) return null;
   const n = {
     id: 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    bed: fmtDT(new Date(sleepActive.bed)), wake: fmtDT(new Date(wakeMs)), rating: null, tags: [], how
+    bed: fmtDT(new Date(sleepActive.bed)), wake: fmtDT(new Date(wakeMs)), rating: null, tags: [], sick: [], how
   };
-  const clean = sanitizeSleep({ nights: [n], tags: sleep.tags });
+  const clean = sanitizeSleep({ nights: [n], tags: sleep.tags, sickTags: sleep.sickTags });
   if (!clean.nights.length) return null;
   const before = JSON.stringify(sleep);
   sleep.nights.push(clean.nights[0]);
@@ -68,13 +60,21 @@ function finishNight(wakeMs, how) {
 function nightEditorHtml(n) {
   const nid = escapeHtml(n.id);
   const chips = sleep.tags.map((t, i) => '<button type="button" class="chip" data-act="s-tag" data-id="' + nid + '" data-ti="' + i + '" aria-pressed="' + n.tags.includes(t) + '">' + escapeHtml(t) + '</button>').join('');
+  const sickChips = sleep.sickTags.map((t, i) => '<button type="button" class="chip" data-act="s-sick" data-id="' + nid + '" data-ti="' + i + '" aria-pressed="' + n.sick.includes(t) + '">' + escapeHtml(t) + '</button>').join('');
+  const newRow = (kind) => sleepState.newTagFor === n.id && sleepState.newTagKind === kind
+    ? '<div class="newtag-row"><input type="text" class="text-input" id="newTagInput" maxlength="24" placeholder="' + (kind === 'sick' ? 'z. B. Migräne …' : 'z. B. Sport, Reise …') + '" aria-label="Neue Notiz" /><button type="button" class="btn primary" data-act="s-addtag" data-id="' + nid + '">Hinzufügen</button></div>' : '';
   return '<div class="night-ed">'
+    + '<div class="time-line"><span class="tl-text"><span><b>' + clockText(parseDT(n.bed)) + '</b> bis <b>' + clockText(parseDT(n.wake)) + '</b> Uhr</span><span class="tl-sub">' + fmtDur(nightMinutes(n)) + ' Schlaf</span></span>'
+    +   '<button type="button" class="tool-btn" data-act="s-times" data-id="' + nid + '">Zeiten ändern</button></div>'
     + '<div class="ne-label">Wie fühlst du dich? <span>1 = müde, 5 = fit</span></div>'
     + '<div class="chips wrap">' + [1, 2, 3, 4, 5].map(v => '<button type="button" class="chip" data-act="s-rate" data-id="' + nid + '" data-v="' + v + '" aria-pressed="' + (n.rating === v) + '">' + v + '</button>').join('') + '</div>'
-    + '<div class="ne-label">Notizen zur Nacht <span>optional</span></div>'
-    + '<div class="chips wrap">' + chips + '<button type="button" class="chip add" data-act="s-newtag" data-id="' + nid + '">+ Neu</button></div>'
-    + (sleepState.newTagFor === n.id ? '<div class="newtag-row"><input type="text" class="text-input" id="newTagInput" maxlength="24" placeholder="z. B. Sport, Reise …" aria-label="Neue Notiz" /><button type="button" class="btn primary" data-act="s-addtag" data-id="' + nid + '">Hinzufügen</button></div>' : '')
-    + '<div class="tool-row" style="margin-top:12px;"><button type="button" class="tool-btn" data-act="s-times" data-id="' + nid + '">Zeiten ändern</button></div>'
+    + '<div class="ne-label">Notizen zur Nacht <span>optional · lange drücken zum Bearbeiten</span></div>'
+    + '<div class="chips wrap">' + chips + '<button type="button" class="chip add" data-act="s-newtag" data-kind="tag" data-id="' + nid + '">+ Neu</button></div>'
+    + newRow('tag')
+    + '<details class="sick-box" data-sick="' + nid + '"' + (n.sick.length || sleepState.sickOpen === n.id ? ' open' : '') + '><summary>Krank?' + (n.sick.length ? '<span class="sick-count">' + n.sick.length + '</span>' : '') + '</summary><p class="hint" style="margin:0 0 8px;">Lange auf ein Symptom drücken zum Bearbeiten.</p>'
+    +   '<div class="chips wrap">' + sickChips + '<button type="button" class="chip add" data-act="s-newtag" data-kind="sick" data-id="' + nid + '">+ Neu</button></div>'
+    +   newRow('sick')
+    + '</details>'
     + '</div>';
 }
 
@@ -83,6 +83,7 @@ function nightItemHtml(n) {
   const bits = [clockText(parseDT(n.bed)) + ' – ' + clockText(parseDT(n.wake))];
   if (n.rating) bits.push('Gefühl ' + n.rating + '/5');
   if (n.tags.length) bits.push(n.tags.join(', '));
+  if (n.sick.length) bits.push('krank: ' + n.sick.join(', '));
   return '<details class="stat-habit" data-nid="' + escapeHtml(n.id) + '"' + (sleepState.openId === n.id ? ' open' : '') + '>'
     + '<summary><span class="log-summary-text"><span class="log-title">' + dayShort(n.wake) + ' · ' + fmtDur(mins) + '</span>'
     + '<span class="log-sub">' + escapeHtml(bits.join(' · ')) + '</span></span><span class="chevron" aria-hidden="true"></span></summary>'
@@ -93,6 +94,7 @@ function nightItemHtml(n) {
 
 function renderSleep() {
   updateSleepNav();
+  if (sleepState.page === 'notes') { renderNotesPage(); return; }
   if (sleepState.tab === 'stats') { renderSleepStats(); return; }
   const sub = document.getElementById('sleepSubtitle');
   let html = '';
@@ -170,6 +172,10 @@ function wakeCardHtml() {
 }
 
 function updateSleepNav() {
+  const nb = document.getElementById('notesBtn');
+  nb.hidden = currentView !== 'sleep';
+  nb.setAttribute('aria-pressed', String(sleepState.page === 'notes'));
+  document.getElementById('sleepTabs').hidden = sleepState.page === 'notes';
   const tabs = document.getElementById('sleepTabs');
   tabs.querySelectorAll('button').forEach(t => t.setAttribute('aria-pressed', String(t.dataset.stab === sleepState.tab)));
 }
@@ -258,7 +264,16 @@ sleepEl.addEventListener('click', (e) => {
     const t = sleep.tags[Number(b.dataset.ti)];
     if (t) { night.tags = night.tags.includes(t) ? night.tags.filter(x => x !== t) : night.tags.concat(t); saveSleep(); renderSleep(); }
   }
-  else if (act === 's-newtag') { sleepState.newTagFor = sleepState.newTagFor === b.dataset.id ? null : b.dataset.id; renderSleep(); const i = document.getElementById('newTagInput'); if (i) i.focus(); }
+  else if (act === 's-sick' && night) {
+    const t = sleep.sickTags[Number(b.dataset.ti)];
+    if (t) { night.sick = night.sick.includes(t) ? night.sick.filter(x => x !== t) : night.sick.concat(t); sleepState.sickOpen = night.id; saveSleep(); renderSleep(); }
+  }
+  else if (act === 's-newtag') {
+    const kind = b.dataset.kind === 'sick' ? 'sick' : 'tag';
+    const same = sleepState.newTagFor === b.dataset.id && sleepState.newTagKind === kind;
+    sleepState.newTagFor = same ? null : b.dataset.id; sleepState.newTagKind = kind;
+    if (kind === 'sick') sleepState.sickOpen = b.dataset.id;
+    renderSleep(); const i = document.getElementById('newTagInput'); if (i) i.focus(); }
   else if (act === 's-addtag' && night) addTag(night);
   else if (act === 's-times' && night) openNightSheet(night.id);
   else if (act === 's-add') openNightSheet(null);
@@ -271,9 +286,11 @@ function addTag(night) {
   const input = document.getElementById('newTagInput');
   const t = cleanTag(input ? input.value : '');
   if (!t) return;
-  let existing = sleep.tags.find(x => x.toLowerCase() === t.toLowerCase());
-  if (!existing) { sleep.tags.push(t); existing = t; }
-  if (!night.tags.includes(existing)) night.tags.push(existing);
+  const isSick = sleepState.newTagKind === 'sick';
+  const list = isSick ? sleep.sickTags : sleep.tags, own = isSick ? night.sick : night.tags;
+  let existing = list.find(x => x.toLowerCase() === t.toLowerCase());
+  if (!existing) { list.push(t); existing = t; }
+  if (!own.includes(existing)) own.push(existing);
   sleepState.newTagFor = null;
   saveSleep(); renderSleep();
 }
@@ -311,6 +328,10 @@ sleepEl.addEventListener('toggle', (e) => {
   if (d.matches && d.matches('details[data-nid]')) {
     if (d.open) sleepState.openId = d.dataset.nid;
     else if (sleepState.openId === d.dataset.nid) sleepState.openId = null;
+  }
+  if (d.matches && d.matches('details[data-sick]')) {
+    if (d.open) sleepState.sickOpen = d.dataset.sick;
+    else if (sleepState.sickOpen === d.dataset.sick) sleepState.sickOpen = null;
   }
 }, true);
 
@@ -358,7 +379,7 @@ document.getElementById('nightForm').addEventListener('submit', (e) => {
   if (sleep.nights.some(n => n.id !== nightCtx.id && n.bed === bed)) { msg.textContent = 'Für diese Einschlafzeit gibt es schon eine Nacht.'; return; }
   const before = JSON.stringify(sleep);
   if (nightCtx.id) { const n = sleep.nights.find(x => x.id === nightCtx.id); n.bed = bed; n.wake = wake; if (n.how === 'plan' || n.how === 'ok') n.how = 'edit'; }
-  else sleep.nights.push({ id: 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), bed, wake, rating: null, tags: [], how: 'manual' });
+  else sleep.nights.push({ id: 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), bed, wake, rating: null, tags: [], sick: [], how: 'manual' });
   sleep.nights.sort((a, b) => (a.bed < b.bed ? -1 : a.bed > b.bed ? 1 : 0));
   if (!saveSleep()) { sleep = JSON.parse(before); msg.textContent = 'Der Speicher ist voll.'; return; }
   nightSheet.close(); renderSleep();
@@ -366,19 +387,166 @@ document.getElementById('nightForm').addEventListener('submit', (e) => {
 
 // ---- Einstellungen: Schlafziel und Notizen ----
 
+// Notizen und Symptome bearbeiten: eigene Seite im Schlaf-Bereich, die Einstellungen und das Gedrückthalten
+// eines Knopfs bei einer Nacht. kind 'tag' = Notizen zur Nacht, 'sick' = Krankheits-Symptome
+const TAG_KINDS = {
+  tag:  { list: () => sleep.tags,     key: 'tags', max: 60, empty: 'Keine Notizen.',   placeholder: 'Neue Notiz',    word: 'Notiz' },
+  sick: { list: () => sleep.sickTags, key: 'sick', max: 40, empty: 'Keine Symptome.', placeholder: 'Neues Symptom', word: 'Symptom' }
+};
+
+function tagEditorHtml(kind) {
+  const K = TAG_KINDS[kind], list = K.list();
+  return (list.length ? list.map((t, i) => {
+    const used = sleep.nights.filter(n => n[K.key].includes(t)).length;
+    return '<div class="tag-row"><input type="text" class="text-input" maxlength="24" value="' + escapeHtml(t) + '" data-kind="' + kind + '" data-i="' + i + '" aria-label="' + escapeHtml(t) + ' umbenennen" />'
+      + '<span class="tag-used">' + (used ? used + '×' : '') + '</span>'
+      + '<button type="button" class="tag-del" data-kind="' + kind + '" data-i="' + i + '" aria-label="' + escapeHtml(t) + ' löschen">Löschen</button></div>';
+  }).join('') : '<p class="setting-desc">' + K.empty + '</p>')
+    + '<div class="tag-row add"><input type="text" class="text-input" maxlength="24" data-kind="' + kind + '" data-new="1" placeholder="' + K.placeholder + '" aria-label="' + K.placeholder + '" />'
+    + '<button type="button" class="btn" data-kind="' + kind + '" data-add="1">Hinzufügen</button></div>'
+    + '<p class="status error" data-msg="' + kind + '" role="alert"></p>';
+}
+function renderTagEditor(kind) {
+  document.querySelectorAll('.tag-editor[data-kind="' + kind + '"]').forEach(el => { el.innerHTML = tagEditorHtml(kind); });
+}
+function tagMsg(kind, text) { document.querySelectorAll('[data-msg="' + kind + '"]').forEach(m => { m.textContent = text; }); }
+function refreshTagViews(kind) {
+  renderTagEditor(kind);
+  if (currentView === 'sleep') renderSleep();
+}
+
+// Benennt um (in der Auswahl und in allen gespeicherten Nächten). Gibt einen Fehlertext zurück oder ''.
+function renameTag(kind, i, value) {
+  const K = TAG_KINDS[kind], list = K.list(), old = list[i];
+  const t = cleanTag(value);
+  if (old === undefined || t === old) return '';
+  if (!t) return 'Der Name darf nicht leer sein.';
+  if (list.some((x, j) => j !== i && x.toLowerCase() === t.toLowerCase())) return '„' + t + '“ gibt es schon.';
+  list[i] = t;
+  sleep.nights.forEach(n => { n[K.key] = n[K.key].map(x => x === old ? t : x); });
+  saveSleep();
+  return '';
+}
+function tagUseCount(kind, i) {
+  const K = TAG_KINDS[kind], t = K.list()[i];
+  return sleep.nights.filter(n => n[K.key].includes(t)).length;
+}
+function deleteTag(kind, i) {
+  const K = TAG_KINDS[kind], list = K.list(), t = list[i];
+  if (t === undefined) return;
+  list.splice(i, 1);
+  sleep.nights.forEach(n => { n[K.key] = n[K.key].filter(x => x !== t); });
+  saveSleep();
+}
+
 function renderSleepSettings() {
   document.getElementById('sleepGoalValue').textContent = fmtDur(sleep.goalMin);
-  document.getElementById('tagList').innerHTML = sleep.tags.map((t, i) =>
-    '<span class="tag-pill">' + escapeHtml(t) + '<button type="button" data-ti="' + i + '" aria-label="' + escapeHtml(t) + ' entfernen">✕</button></span>').join('') || '<p class="setting-desc">Keine Notizen.</p>';
+  renderTagEditor('tag'); renderTagEditor('sick');
 }
+
+// Eigene Seite (Knopf oben neben den Einstellungen)
+function renderNotesPage() {
+  document.getElementById('sleepSubtitle').textContent = 'Notizen und Symptome';
+  sleepEl.innerHTML = '<p class="hint" style="margin-top:20px;">Zum Umbenennen auf den Namen tippen. Beim Umbenennen und Löschen ändern sich auch alle gespeicherten Nächte.</p>'
+    + '<div class="stats-title">Notizen zur Nacht</div><div class="tag-editor" data-kind="tag">' + tagEditorHtml('tag') + '</div>'
+    + '<div class="stats-title">Krankheits-Symptome</div><div class="tag-editor" data-kind="sick">' + tagEditorHtml('sick') + '</div>';
+}
+document.getElementById('notesBtn').addEventListener('click', () => {
+  sleepState.page = sleepState.page === 'notes' ? 'main' : 'notes';
+  renderSleep(); window.scrollTo(0, 0);
+});
+
+// Bedienung der Listen (gilt für Einstellungen und Seite): "change" bei Umbenennen, Enter, Knöpfe
+document.addEventListener('change', (e) => {
+  const inp = e.target.closest && e.target.closest('.tag-editor input[data-kind]');
+  if (!inp || inp.dataset.new) return;
+  const kind = inp.dataset.kind, msg = renameTag(kind, Number(inp.dataset.i), inp.value);
+  refreshTagViews(kind);
+  if (msg) tagMsg(kind, msg);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  const inp = e.target.closest && e.target.closest('.tag-editor input[data-kind]');
+  if (!inp) return;
+  e.preventDefault();
+  if (inp.dataset.new) inp.closest('.tag-editor').querySelector('button[data-add]').click(); else inp.blur();
+});
+document.addEventListener('click', (e) => {
+  const b = e.target.closest && e.target.closest('.tag-editor button[data-kind]');
+  if (!b) return;
+  const kind = b.dataset.kind, K = TAG_KINDS[kind], list = K.list();
+  if (b.dataset.add) {
+    const inp = b.closest('.tag-editor').querySelector('input[data-new]');
+    const t = cleanTag(inp.value);
+    if (!t) return;
+    if (list.some(x => x.toLowerCase() === t.toLowerCase())) { tagMsg(kind, '„' + t + '“ gibt es schon.'); return; }
+    if (list.length >= K.max) { tagMsg(kind, 'Mehr als ' + K.max + ' sind nicht möglich.'); return; }
+    list.push(t); saveSleep(); refreshTagViews(kind);
+  } else if (b.classList.contains('tag-del')) {
+    const i = Number(b.dataset.i), used = tagUseCount(kind, i);
+    if (!twoStep(b, used ? 'Löschen? (' + used + '×)' : 'Sicher?')) return;
+    deleteTag(kind, i); refreshTagViews(kind);
+  }
+});
+
+// Lange auf einen Knopf bei einer Nacht drücken: Name ändern oder löschen
+const tagSheet = document.getElementById('tagSheet');
+const tagSheetInput = document.getElementById('tagSheetInput');
+const tagSheetDelete = document.getElementById('tagSheetDelete');
+let tagCtx = null, lp = null, lpFired = 0;
+
+function openTagSheet(kind, i) {
+  const K = TAG_KINDS[kind];
+  if (K.list()[i] === undefined) return;
+  tagCtx = { kind, i };
+  document.getElementById('tagSheetTitle').textContent = K.word + ' bearbeiten';
+  tagSheetInput.value = K.list()[i];
+  document.getElementById('tagSheetMsg').textContent = '';
+  disarm(tagSheetDelete);
+  tagSheet.showModal();
+  document.getElementById('tagSheetTitle').focus({ preventScroll: true });
+}
+sleepEl.addEventListener('pointerdown', (e) => {
+  lpFired = 0; // neuer Druck: der Klick danach zählt wieder normal
+  const c = e.target.closest('button[data-act="s-tag"], button[data-act="s-sick"]');
+  if (!c || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  const kind = c.dataset.act === 's-sick' ? 'sick' : 'tag', i = Number(c.dataset.ti);
+  const x0 = e.clientX, y0 = e.clientY;
+  clearTimeout(lp);
+  lp = { x0, y0, timer: setTimeout(() => {
+    lp = null; lpFired = Date.now();
+    if (navigator.vibrate) { try { navigator.vibrate(15); } catch (err) { /* nicht kritisch */ } }
+    openTagSheet(kind, i);
+  }, 500) };
+});
+const lpCancel = () => { if (lp) { clearTimeout(lp.timer); lp = null; } };
+sleepEl.addEventListener('pointerup', lpCancel);
+sleepEl.addEventListener('pointercancel', lpCancel);
+sleepEl.addEventListener('pointermove', (e) => { if (lp && Math.hypot(e.clientX - lp.x0, e.clientY - lp.y0) > 8) lpCancel(); });
+sleepEl.addEventListener('contextmenu', (e) => { if (e.target.closest('button[data-act="s-tag"], button[data-act="s-sick"]')) e.preventDefault(); });
+// Der Klick, der nach dem langen Drücken noch folgt, darf den Knopf nicht umschalten
+sleepEl.addEventListener('click', (e) => {
+  if (Date.now() - lpFired < 700) { e.stopImmediatePropagation(); e.preventDefault(); }
+}, true);
+
+document.getElementById('tagSheetCancel').addEventListener('click', () => tagSheet.close());
+tagSheet.addEventListener('click', (e) => { if (e.target === tagSheet) tagSheet.close(); });
+document.getElementById('tagSheetForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (!tagCtx) return;
+  const msg = renameTag(tagCtx.kind, tagCtx.i, tagSheetInput.value);
+  if (msg) { document.getElementById('tagSheetMsg').textContent = msg; return; }
+  tagSheet.close(); refreshTagViews(tagCtx.kind);
+});
+tagSheetDelete.addEventListener('click', () => {
+  if (!tagCtx) return;
+  const used = tagUseCount(tagCtx.kind, tagCtx.i);
+  if (!twoStep(tagSheetDelete, used ? 'Löschen? (' + used + '×)' : 'Sicher?')) return;
+  deleteTag(tagCtx.kind, tagCtx.i);
+  tagSheet.close(); refreshTagViews(tagCtx.kind);
+});
 document.getElementById('sleepGoalMinus').addEventListener('click', () => { sleep.goalMin = Math.max(240, sleep.goalMin - 15); saveSleep(); renderSleepSettings(); });
 document.getElementById('sleepGoalPlus').addEventListener('click', () => { sleep.goalMin = Math.min(720, sleep.goalMin + 15); saveSleep(); renderSleepSettings(); });
-document.getElementById('tagList').addEventListener('click', (e) => {
-  const b = e.target.closest('button[data-ti]');
-  if (!b) return;
-  sleep.tags.splice(Number(b.dataset.ti), 1); // bereits gespeicherte Nächte behalten ihre Notizen
-  saveSleep(); renderSleepSettings();
-});
 
 // ---- Takt: Anzeige auffrischen, Weckzeit erkennen ----
 
@@ -528,12 +696,15 @@ function renderSleepStats() {
   }
 
   // Notizen: Wie wirken sie auf die Dauer?
-  const tagRows = sleep.tags.map(t => {
-    const w = nights.filter(n => n.tags.includes(t)), wo = nights.filter(n => !n.tags.includes(t));
+  const noteDefs = sleep.tags.map(t => ({ t, has: n => n.tags.includes(t) }))
+    .concat(sleep.sickTags.map(t => ({ t: 'Krank: ' + t, has: n => n.sick.includes(t) })))
+    .concat([{ t: 'Krank (irgendein Symptom)', has: n => n.sick.length > 0 }]);
+  const tagRows = noteDefs.map(def => {
+    const w = nights.filter(def.has), wo = nights.filter(n => !def.has(n));
     if (w.length < 3 || wo.length < 3) return null;
-    return { t, n: w.length, a: avg(w.map(nightMinutes)), b: avg(wo.map(nightMinutes)) };
+    return { t: def.t, n: w.length, a: avg(w.map(nightMinutes)), b: avg(wo.map(nightMinutes)) };
   }).filter(Boolean).sort((p, q) => Math.abs(q.a - q.b) - Math.abs(p.a - p.b));
-  const tagUsed = sleep.tags.filter(t => nights.some(n => n.tags.includes(t))).length;
+  const tagUsed = noteDefs.filter(def => nights.some(def.has)).length;
   html += '<div class="stats-title">Notizen und Schlaf</div>';
   if (tagRows.length) {
     html += '<p class="stats-note" style="margin:-6px 2px 8px;">Ø Schlafdauer in Nächten mit der Notiz, verglichen mit Nächten ohne.</p><div class="pr-list">'

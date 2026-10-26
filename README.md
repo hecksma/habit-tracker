@@ -1,6 +1,6 @@
 # Maximize
 
-Persönliche Alltags-App als PWA (Web-App, installierbar auf Android): **Habits** und **Gym**.
+Persönliche Alltags-App als PWA (Web-App, installierbar auf Android): **Habits** (Tun, Vermeiden, Menge), **Gym** und **Schlaf**.
 Alle Daten bleiben auf dem Gerät (Browser-Speicher). Es gibt keinen Server und kein Konto.
 
 ## Aufbau
@@ -9,14 +9,14 @@ Alle Daten bleiben auf dem Gerät (Browser-Speicher). Es gibt keinen Server und 
 index.html          Gerüst der Seite: Kopfzeile, Bereiche, Fenster (Dialoge), untere Leiste
 css/style.css       Aussehen (Farben und Maße oben unter :root)
 js/core.js          Version, Speicher-Hilfen (readJson), Datums-Hilfen, escapeHtml
-js/habits.js        Habits: Plan, Serie, Anzeige, Abhaken, Bearbeiten-Fenster
+js/habits.js        Habits: Arten (Tun/Vermeiden/Menge), Plan, Serie, Anzeige, Abhaken, Bearbeiten-Fenster
 js/settings.js      Einstellungen, Schalter, Reihenfolge per Drag and drop
-js/stats.js         Habits: Statistik
+js/stats.js         Habits: Statistik (getrennt nach Art)
 js/gym-data.js      Gym: Datenmodell, Prüfung (sanitizeGym), Zusammenführen, CSV-Import
 js/gym-records.js   Gym: Rekorde (PRs): Gesamt und aktuell, geschätztes 1RM
 js/timepick.js      Uhrzeit-Auswahl (24 Stunden, Uhrenrad)
 js/sleep-data.js    Schlaf: Datenmodell, Prüfung, Zusammenführen
-js/sleep-view.js    Schlaf: Gute-Nacht-Ablauf, Morgenfrage, Statistik
+js/sleep-view.js    Schlaf: Gute-Nacht-Ablauf, Morgenfrage, Notizen/Symptome, Statistik
 js/gym-view.js      Gym: Startseite, Übungsseiten, Verlauf
 js/gym-workout.js   Gym: laufendes Training, Pausen-Timer, Routinen-Editor
 js/backup.js        Datensicherung (Export und Import als JSON)
@@ -57,9 +57,9 @@ auf IndexedDB umstellen, ohne den Rest zu ändern.
 
 ## Veröffentlichen
 
-Versionsnummer (1.x.y): Die erste Zahl steigt nur bei einem Meilenstein, zum Beispiel einem neuen Bereich
+Versionsnummer (X.Y.Z): Die erste Zahl steigt nur bei einem Meilenstein, zum Beispiel einem neuen Bereich
 (gemeinsam entschieden). Die mittlere Zahl steigt mit dem Arbeitstag: Am ersten Tag ist es 1.1.x, am nächsten
-Arbeitstag 1.2.x usw. (1.4.x = Sonntag, 25.10.2026). Die letzte Zahl zählt die Veröffentlichungen innerhalb des Tages.
+Arbeitstag 1.2.x usw. (1.4.x = Sonntag, 25.10.2026; 2.0 = Meilenstein Schlaf; 2.1.x = Montag, 26.10.2026). Die letzte Zahl zählt die Veröffentlichungen innerhalb des Tages.
 
 1. `APP_VERSION` in `js/core.js`, `CACHE` in `sw.js` und `?v=` an den Dateien in `index.html` erhöhen.
 2. In GitHub Desktop: Commit, Push. Nach ca. einer Minute ist die neue Version unter GitHub Pages erreichbar.

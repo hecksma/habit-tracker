@@ -5,7 +5,7 @@
 // ======================================================================
 //
 // Eine Nacht: { id, bed: 'YYYY-MM-DDTHH:MM', wake: 'YYYY-MM-DDTHH:MM', rating: 1-5 oder null,
-//               tags: ['Koffein', ...], how: 'plan' | 'ok' | 'edit' | 'manual' }
+//               tags: ['Koffein', ...], sick: ['Husten', ...] (Krankheits-Symptome, nur wenn krank), how: 'plan' | 'ok' | 'edit' | 'manual' }
 //   how sagt, woher die Aufstehzeit kommt: 'plan' = Weckzeit ohne Rückfrage übernommen,
 //   'ok' = du hast die Weckzeit bestätigt, 'edit' = du hast eine andere Zeit angegeben,
 //   'manual' = von Hand nachgetragen.
@@ -15,13 +15,14 @@
 const SLEEP_KEY = 'maximize-sleep';
 const SLEEP_ACTIVE_KEY = 'maximize-sleep-active';
 const DEFAULT_TAGS = ['Spätes Training', 'Koffein', 'Alkohol', 'Spät gegessen', 'Stress', 'Bildschirm im Bett'];
+const DEFAULT_SICK = ['Schnupfen', 'Husten', 'Halsschmerzen', 'Fieber', 'Kopfschmerzen', 'Magen-Darm'];
 const DT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-let sleep = { nights: [], tags: DEFAULT_TAGS.slice(), goalMin: 480, wakeByWeekday: ['07:00', '07:00', '07:00', '07:00', '07:00', '07:00', '07:00'] };
+let sleep = { nights: [], tags: DEFAULT_TAGS.slice(), sickTags: DEFAULT_SICK.slice(), goalMin: 480, wakeByWeekday: ['07:00', '07:00', '07:00', '07:00', '07:00', '07:00', '07:00'] };
 let sleepActive = null;
 // Was gerade angezeigt wird (nur im Speicher der Seite)
-const sleepState = { tab: 'night', calMonth: null, calSel: null, openId: null, shown: 14, draftWake: null, askEdit: false, newTagFor: null, asked: false };
+const sleepState = { page: 'main', tab: 'night', calMonth: null, calSel: null, openId: null, shown: 14, draftWake: null, askEdit: false, newTagFor: null, newTagKind: 'tag', sickOpen: null, asked: false };
 
 // Datum und Uhrzeit als Text ("2026-10-25T23:10") und zurück. Immer in deiner Ortszeit.
 function parseDT(s) { return new Date(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10), +s.slice(11, 13), +s.slice(14, 16)); }
@@ -31,13 +32,18 @@ function nightMinutes(n) { return Math.round((parseDT(n.wake) - parseDT(n.bed)) 
 function cleanTag(t) { return typeof t === 'string' ? t.trim().replace(/\s+/g, ' ').slice(0, 24) : ''; }
 
 function sanitizeSleep(raw) {
-  const out = { nights: [], tags: [], goalMin: 480, wakeByWeekday: ['07:00', '07:00', '07:00', '07:00', '07:00', '07:00', '07:00'] };
+  const out = { nights: [], tags: [], sickTags: [], goalMin: 480, wakeByWeekday: ['07:00', '07:00', '07:00', '07:00', '07:00', '07:00', '07:00'] };
   const src = (raw && typeof raw === 'object') ? raw : null;
-  if (!src) { out.tags = DEFAULT_TAGS.slice(); return out; }
+  if (!src) { out.tags = DEFAULT_TAGS.slice(); out.sickTags = DEFAULT_SICK.slice(); return out; }
   const seen = new Set();
   (Array.isArray(src.tags) ? src.tags : DEFAULT_TAGS).forEach(t => {
     const c = cleanTag(t);
     if (c && !seen.has(c.toLowerCase()) && out.tags.length < 60) { seen.add(c.toLowerCase()); out.tags.push(c); }
+  });
+  const seenSick = new Set();
+  (Array.isArray(src.sickTags) ? src.sickTags : DEFAULT_SICK).forEach(t => {
+    const c = cleanTag(t);
+    if (c && !seenSick.has(c.toLowerCase()) && out.sickTags.length < 40) { seenSick.add(c.toLowerCase()); out.sickTags.push(c); }
   });
   if (Number.isFinite(src.goalMin) && src.goalMin >= 240 && src.goalMin <= 720) out.goalMin = Math.round(src.goalMin / 15) * 15;
   if (Array.isArray(src.wakeByWeekday)) {
@@ -53,10 +59,13 @@ function sanitizeSleep(raw) {
     const tags = [];
     (Array.isArray(n.tags) ? n.tags : []).slice(0, 12).forEach(t => { const c = cleanTag(t); if (c && !tags.includes(c)) tags.push(c); });
     tags.forEach(t => { if (!out.tags.some(x => x.toLowerCase() === t.toLowerCase())) out.tags.push(t); });
+    const sick = [];
+    (Array.isArray(n.sick) ? n.sick : []).slice(0, 12).forEach(t => { const c = cleanTag(t); if (c && !sick.includes(c)) sick.push(c); });
+    sick.forEach(t => { if (!out.sickTags.some(x => x.toLowerCase() === t.toLowerCase())) out.sickTags.push(t); });
     out.nights.push({
       id: n.id, bed: n.bed, wake: n.wake,
       rating: (Number.isInteger(n.rating) && n.rating >= 1 && n.rating <= 5) ? n.rating : null,
-      tags, how: ['plan', 'ok', 'edit', 'manual'].includes(n.how) ? n.how : 'manual'
+      tags, sick, how: ['plan', 'ok', 'edit', 'manual'].includes(n.how) ? n.how : 'manual'
     });
   });
   out.nights.sort((a, b) => (a.bed < b.bed ? -1 : a.bed > b.bed ? 1 : 0));
@@ -97,6 +106,7 @@ function mergeSleep(incoming) {
     if (have.has(n.id) || beds.has(n.bed)) return;
     sleep.nights.push(n); have.add(n.id); beds.add(n.bed); added++;
   });
+  (incoming.sickTags || []).forEach(t => { if (!sleep.sickTags.some(x => x.toLowerCase() === t.toLowerCase()) && sleep.sickTags.length < 40) sleep.sickTags.push(t); });
   incoming.tags.forEach(t => { if (!sleep.tags.some(x => x.toLowerCase() === t.toLowerCase()) && sleep.tags.length < 60) sleep.tags.push(t); });
   sleep.nights.sort((a, b) => (a.bed < b.bed ? -1 : a.bed > b.bed ? 1 : 0));
   return added;

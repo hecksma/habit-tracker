@@ -11,7 +11,7 @@
 const statsEl = document.getElementById('stats');
 const PERIODS = { 7: '7 Tage', 30: '30 Tage', 365: 'Jahr' };
 // Merkt sich, was du in der Statistik gewählt hast, damit es beim Neuzeichnen erhalten bleibt
-const statsState = { period: 30, openId: null, month: {} };
+const statsState = { period: 30, kind: 'do', openId: null, month: {} };
 
 // Die Eingabeleiste unten gibt es nur im Habit-Bereich und nur in der Tagesliste.
 function updateChrome() {
@@ -96,9 +96,10 @@ function bestStreak(h, today) {
 }
 
 // Alle Habits zusammen für einen Zeitraum
-function overallStats(fromStr, today) {
+function overallStats(fromStr, today, list) {
+  list = list || habits;
   const o = { planned: 0, done: 0, total: 0, byWeekday: ALL_DAYS.map(() => ({ planned: 0, done: 0 })), perfect: 0, planDays: 0, perHabit: [] };
-  habits.forEach(h => {
+  list.forEach(h => {
     const s = habitStats(h, fromStr, today);
     o.perHabit.push({ h, s });
     o.planned += s.planned; o.done += s.done; o.total += s.total;
@@ -108,7 +109,7 @@ function overallStats(fromStr, today) {
   });
 
   // "Alles geschafft": Tage, an denen alle geplanten Habits (mit festen Tagen) erledigt wurden
-  const fixed = habits.filter(h => getSchedule(h).type === 'days')
+  const fixed = list.filter(h => getSchedule(h).type === 'days')
     .map(h => ({ days: getSchedule(h).days, done: new Set(h.completions || []), first: firstDay(h) }));
   for (let d = parseDate(fromStr); fmt(d) <= today; d = addDays(d, 1)) {
     const key = fmt(d), idx = weekdayIdx(d);
@@ -123,13 +124,14 @@ function overallStats(fromStr, today) {
 }
 
 // Quote der letzten n Wochen (Mo bis So), alle Habits zusammen
-function weeklyTrend(today, n) {
+function weeklyTrend(today, n, list) {
+  list = list || habits;
   const thisWs = weekStart(parseDate(today));
   const out = [];
   for (let i = n - 1; i >= 0; i--) {
     const ws = addDays(thisWs, -7 * i);
     let planned = 0, done = 0;
-    habits.forEach(h => {
+    list.forEach(h => {
       const s = habitStats(h, fmt(ws), today, fmt(addDays(ws, 6)));
       planned += s.planned; done += s.done;
     });
@@ -170,6 +172,62 @@ function longDate(str) {
   return parseDate(str).toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+// Welche Arten gibt es gerade? Die Statistik zeigt immer nur eine Art, damit die Grafiken übersichtlich bleiben.
+const KIND_NAMES = { do: 'Tun', avoid: 'Vermeiden', amount: 'Menge' };
+const KIND_TEXT = {
+  do:     { done: 'erledigt', total: 'Erledigt gesamt', perfect: 'Alles geschafft', totalSub: 'Abhakungen im Zeitraum', quote: 'geplant erledigt', all: 'Insgesamt erledigt' },
+  avoid:  { done: 'durchgehalten', total: 'Durchgehalten gesamt', perfect: 'Alles durchgehalten', totalSub: 'Haken im Zeitraum', quote: 'geplant durchgehalten', all: 'Insgesamt durchgehalten' },
+  amount: { done: 'Ziel erreicht', total: 'Ziel erreicht', perfect: 'Alle Ziele erreicht', totalSub: 'Tage mit erreichtem Ziel', quote: 'geplant Ziel erreicht', all: 'Tage mit erreichtem Ziel' }
+};
+function statsKinds() { return ['do', 'avoid', 'amount'].filter(k => habits.some(h => kindOf(h) === k)); }
+
+// Mengen: Kennzahlen im Zeitraum
+function amountStats(h, fromStr, today) {
+  const first = firstDay(h);
+  const start = fromStr > first ? fromStr : first;
+  let sum = 0, days = 0, reached = 0, best = 0;
+  const tgt = getAmount(h).target;
+  Object.keys(h.amounts || {}).forEach(d => { const v = amountOn(h, d); if (v > best) best = v; });
+  for (let d = parseDate(start); fmt(d) <= today; d = addDays(d, 1)) {
+    const key = fmt(d), v = amountOn(h, key);
+    if (key === today && v === 0) continue; // heute läuft noch
+    sum += v; days++;
+    if (v >= tgt - 1e-9) reached++;
+  }
+  return { avg: days ? sum / days : 0, days, reached, best };
+}
+
+// Balken der Menge mit Zielstrich: 7 und 30 Tage täglich, ein Jahr als Monatsdurchschnitt
+function amountChart(h, today, period) {
+  const a = getAmount(h), first = firstDay(h);
+  const items = [];
+  if (period === 365) {
+    const t = parseDate(today);
+    for (let i = 11; i >= 0; i--) {
+      const ms = new Date(t.getFullYear(), t.getMonth() - i, 1, 12), me = new Date(t.getFullYear(), t.getMonth() - i + 1, 0, 12);
+      let sum = 0, n = 0;
+      for (let d = ms; d <= me && fmt(d) <= today; d = addDays(d, 1)) { if (fmt(d) < first) continue; sum += amountOn(h, fmt(d)); n++; }
+      const label = ms.toLocaleDateString('de-DE', { month: 'short' }).replace('.', '');
+      items.push({ v: n ? sum / n : 0, label, tip: ms.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' }) + ': Ø ' + amountText(h, n ? sum / n : 0) + ' pro Tag' });
+    }
+  } else {
+    for (let i = period - 1; i >= 0; i--) {
+      const d = addDays(parseDate(today), -i), key = fmt(d);
+      const v = amountOn(h, key);
+      items.push({ v, label: (period === 7 || d.getDate() % 5 === 0) ? d.getDate() + '.' : '', tip: longDate(key) + ': ' + amountText(h, v) });
+    }
+  }
+  const max = Math.max(a.target * 1.25, ...items.map(x => x.v));
+  const goalPct = Math.round(100 * a.target / max);
+  return '<div class="chart goal-chart' + (period === 30 ? ' dense' : '') + '" role="img" aria-label="Menge pro Tag" style="--goal:' + goalPct + '%">' + items.map(x => {
+    const pct = Math.max(Math.round(100 * x.v / max), x.v > 0 ? 3 : 2);
+    return '<div class="bar-col" data-tip="' + escapeHtml(x.tip) + '" tabindex="0" role="button" aria-label="' + escapeHtml(x.tip) + '">'
+      + '<span class="bar-val">' + (period === 30 ? '' : (x.v ? numFmt.format(Math.round(x.v * 10) / 10) : '')) + '</span>'
+      + '<span class="bar-track"><span class="bar' + (x.v >= a.target - 1e-9 ? '' : ' under') + '" style="height:' + pct + '%"></span></span>'
+      + '<span class="bar-label">' + x.label + '</span></div>';
+  }).join('') + '</div>';
+}
+
 // Monatskalender einer Gewohnheit: antippen trägt einen Tag nach oder nimmt ihn zurück
 function renderCalendar(h, today) {
   const sched = getSchedule(h);
@@ -192,11 +250,15 @@ function renderCalendar(h, today) {
     const checked = done.has(key);
     const planned = sched.type === 'weekly' ? true : sched.days.includes(weekdayIdx(d));
     const cls = ['cal-day'];
+    const isAmt = kindOf(h) === 'amount', av = isAmt ? amountOn(h, key) : 0;
     if (checked) cls.push('checked');
+    else if (av > 0) cls.push('partial');
     if (key === today) cls.push('today');
     if (!planned) cls.push('off');
-    cells += '<button type="button" class="' + cls.join(' ') + '" data-action="toggle-day" data-id="' + h.id + '" data-date="' + key + '"'
-      + ' aria-label="' + n + '. ' + label + ': ' + (checked ? 'erledigt' : 'offen') + '" aria-pressed="' + checked + '"' + (key > today ? ' disabled' : '') + '>' + n + '</button>';
+    const style = !checked && av > 0 ? ' style="--fill:' + Math.round(100 * av / getAmount(h).target) + '%"' : '';
+    const state = isAmt ? amountText(h, av) : (checked ? (kindOf(h) === 'avoid' ? 'durchgehalten' : 'erledigt') : 'offen');
+    cells += '<button type="button" class="' + cls.join(' ') + '"' + style + ' data-action="toggle-day" data-id="' + h.id + '" data-date="' + key + '"'
+      + ' aria-label="' + n + '. ' + label + ': ' + state + '" aria-pressed="' + checked + '"' + (key > today ? ' disabled' : '') + '>' + n + '</button>';
   }
 
   return '<div class="cal-head">'
@@ -212,16 +274,29 @@ function renderHabitStats(h, s, today) {
   const best = bestStreak(h, today);
   const unit = streak.unit === 'weeks' ? 'Wochen' : 'Tage';
   const hasWeekdays = sched.type === 'days' && s.byWeekday.some(x => x.planned > 0);
+  const kind = kindOf(h), T = KIND_TEXT[kind];
+  let grid, amtBlock = '';
+  if (kind === 'amount') {
+    const from = fmt(addDays(parseDate(today), -(statsState.period - 1)));
+    const as = amountStats(h, from, today);
+    grid = '<div><div class="mini-label">Aktuelle Serie</div><div class="mini-value">' + streak.value + ' ' + unit + '</div></div>'
+      + '<div><div class="mini-label">Rekord-Serie</div><div class="mini-value">' + best + ' ' + unit + '</div></div>'
+      + '<div><div class="mini-label">Ø pro Tag</div><div class="mini-value">' + amountText(h, Math.round(as.avg * 10) / 10) + '</div></div>'
+      + '<div><div class="mini-label">Beste Tagesmenge</div><div class="mini-value">' + amountText(h, as.best) + '</div></div>'
+      + '<div><div class="mini-label">Ziel erreicht</div><div class="mini-value">' + as.reached + ' von ' + as.days + ' Tagen</div></div>'
+      + '<div><div class="mini-label">Dabei seit</div><div class="mini-value">' + longDate(firstDay(h)) + '</div></div>';
+    amtBlock = '<div class="stats-title">Menge (Ziel: ' + amountText(h, getAmount(h).target) + ')</div>' + amountChart(h, today, statsState.period);
+  } else {
+    grid = '<div><div class="mini-label">Aktuelle Serie</div><div class="mini-value">' + streak.value + ' ' + unit + '</div></div>'
+      + '<div><div class="mini-label">Rekord-Serie</div><div class="mini-value">' + best + ' ' + unit + '</div></div>'
+      + '<div><div class="mini-label">' + T.all + '</div><div class="mini-value">' + (h.completions || []).length + 'x</div></div>'
+      + '<div><div class="mini-label">Dabei seit</div><div class="mini-value">' + longDate(firstDay(h)) + '</div></div>';
+  }
   return '<details class="stat-habit" data-id="' + h.id + '" name="stat-habit"' + (statsState.openId === h.id ? ' open' : '') + '>'
     + '<summary><span class="sh-name">' + escapeHtml(h.name) + '</span>'
     + '<span class="sh-pct">' + pctText(s.done, s.planned) + '</span><span class="chevron" aria-hidden="true"></span></summary>'
     + '<div class="sh-body">'
-    +   '<div class="mini-grid">'
-    +     '<div><div class="mini-label">Aktuelle Serie</div><div class="mini-value">' + streak.value + ' ' + unit + '</div></div>'
-    +     '<div><div class="mini-label">Rekord-Serie</div><div class="mini-value">' + best + ' ' + unit + '</div></div>'
-    +     '<div><div class="mini-label">Insgesamt erledigt</div><div class="mini-value">' + (h.completions || []).length + 'x</div></div>'
-    +     '<div><div class="mini-label">Dabei seit</div><div class="mini-value">' + longDate(firstDay(h)) + '</div></div>'
-    +   '</div>'
+    +   '<div class="mini-grid">' + grid + '</div>' + amtBlock
     +   (hasWeekdays ? '<div class="stats-title">Wochentage</div>' + weekdayChart(s.byWeekday) : '')
     +   '<div class="stats-title">Kalender</div>' + renderCalendar(h, today)
     + '</div></details>';
@@ -229,6 +304,10 @@ function renderHabitStats(h, s, today) {
 
 function renderStats() {
   const today = todayStr();
+  const kinds = statsKinds();
+  if (!kinds.includes(statsState.kind)) statsState.kind = kinds[0] || 'do';
+  const list = habits.filter(h => kindOf(h) === statsState.kind);
+  const T = KIND_TEXT[statsState.kind];
   if (habits.length === 0) {
     subtitleEl.textContent = 'Noch keine Daten.';
     statsEl.innerHTML = '<div class="empty-state"><div class="big">Noch keine Statistik</div>Lege Gewohnheiten an und hake sie ab. Dann erscheinen hier deine Zahlen.</div>';
@@ -237,7 +316,7 @@ function renderStats() {
 
   const period = statsState.period;
   const from = fmt(addDays(parseDate(today), -(period - 1)));
-  const o = overallStats(from, today);
+  const o = overallStats(from, today, list);
   subtitleEl.textContent = 'Auswertung: ' + (period === 365 ? 'letztes Jahr' : 'letzte ' + PERIODS[period]);
 
   // Stabilstes Habit: höchste Quote, aber erst ab 3 geplanten Einheiten, sonst ist die Zahl zufällig
@@ -253,19 +332,24 @@ function renderStats() {
     + '</div>';
 
   const cards = '<div class="stat-grid">'
-    + '<div class="stat-card"><div class="stat-value">' + pctText(o.done, o.planned) + '</div><div class="stat-label">Quote</div><div class="stat-sub">' + (o.planned ? o.done + ' von ' + o.planned + ' geplant erledigt' : 'noch nichts geplant') + '</div></div>'
-    + '<div class="stat-card"><div class="stat-value">' + o.perfect + '</div><div class="stat-label">Alles geschafft</div><div class="stat-sub">' + (o.planDays ? 'an ' + o.perfect + ' von ' + o.planDays + ' Tagen' : 'noch keine Tage') + '</div></div>'
-    + '<div class="stat-card"><div class="stat-value">' + o.total + '</div><div class="stat-label">Erledigt gesamt</div><div class="stat-sub">Abhakungen im Zeitraum</div></div>'
+    + '<div class="stat-card"><div class="stat-value">' + pctText(o.done, o.planned) + '</div><div class="stat-label">Quote</div><div class="stat-sub">' + (o.planned ? o.done + ' von ' + o.planned + ' ' + T.quote : 'noch nichts geplant') + '</div></div>'
+    + '<div class="stat-card"><div class="stat-value">' + o.perfect + '</div><div class="stat-label">' + T.perfect + '</div><div class="stat-sub">' + (o.planDays ? 'an ' + o.perfect + ' von ' + o.planDays + ' Tagen' : 'noch keine Tage') + '</div></div>'
+    + '<div class="stat-card"><div class="stat-value">' + o.total + '</div><div class="stat-label">' + T.total + '</div><div class="stat-sub">' + T.totalSub + '</div></div>'
     + '<div class="stat-card"><div class="stat-value small">' + (best ? escapeHtml(best.name) : '–') + '</div><div class="stat-label">Stabilstes Habit</div><div class="stat-sub">' + (best ? Math.round(best.ratio * 100) + ' % Quote' : 'ab 3 geplanten Einheiten') + '</div></div>'
     + '</div>';
 
-  const trend = weeklyTrend(today, 12).map((w, i, arr) => ({
+  const trend = weeklyTrend(today, 12, list).map((w, i, arr) => ({
     label: (i % 3 === 2 || i === arr.length - 1) ? w.ws.getDate() + '.' + (w.ws.getMonth() + 1) + '.' : '',
     planned: w.planned, done: w.done,
     tip: barTip('Woche ab ' + w.ws.getDate() + '.' + (w.ws.getMonth() + 1) + '.', w.done, w.planned)
   }));
 
-  statsEl.innerHTML = periodSeg + cards
+  const kindSeg = kinds.length > 1
+    ? '<div class="seg" id="statKindSeg" role="group" aria-label="Art der Gewohnheiten" style="margin-top:16px;">'
+      + kinds.map(k => '<button type="button" data-action="stat-kind" data-value="' + k + '" aria-pressed="' + (k === statsState.kind) + '">' + KIND_NAMES[k] + '</button>').join('') + '</div>'
+    : '';
+
+  statsEl.innerHTML = kindSeg + periodSeg + cards
     + '<div class="stats-title">Wochentage</div>' + weekdayChart(o.byWeekday)
     + '<p class="stats-note">Quote in Prozent. Es zählen nur Gewohnheiten mit festen Tagen.</p>'
     + '<div class="stats-title">Letzte 12 Wochen</div>' + barChart(trend)
@@ -279,7 +363,10 @@ statsEl.addEventListener('click', (e) => {
   const b = e.target.closest('[data-action]');
   if (!b) return;
   const a = b.dataset.action;
-  if (a === 'period' && PERIODS[b.dataset.value]) {
+  if (a === 'stat-kind' && KIND_NAMES[b.dataset.value]) {
+    statsState.kind = b.dataset.value; statsState.openId = null;
+    renderStats();
+  } else if (a === 'period' && PERIODS[b.dataset.value]) {
     statsState.period = Number(b.dataset.value);
     renderStats();
   } else if (a === 'toggle-day') {

@@ -282,6 +282,7 @@ h1 {
 /* ---- Eingabeleiste unten ---- */
 
 .add-bar {
+  z-index: 6;
   position: fixed;
   bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
   left: 0;
@@ -768,12 +769,14 @@ dialog h2 {
   z-index: 5;
   display: flex;
   justify-content: center;
-  background: #25211F; /* in allen Bereichen gleich, damit es zum Streifen darunter passt (manifest.json) */
-  border-top: 1px solid var(--border);
+  /* Kein eigener Hintergrund: Die Farbe des Bereichs scheint durch. Der Verlauf lässt Inhalt nur sanft darunter ausblenden. */
+  background: var(--bg); /* gleiche Farbe wie der Bereich: die Leiste fällt optisch nicht auf */
+  pointer-events: none;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .tab {
+  pointer-events: auto;
   flex: 1;
   max-width: 140px;
   height: var(--nav-h);
@@ -1107,7 +1110,6 @@ html, body { overscroll-behavior-y: contain; }
 .sleeping { text-align: center; }
 .sleeping .ne-label { text-align: left; }
 .big-time { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 56px; font-variant-numeric: tabular-nums; line-height: 1.1; color: var(--sage); }
-.tool-row a.tool-btn { text-decoration: none; display: inline-flex; align-items: center; }
 .cal-day.partial { background: rgba(var(--accent-rgb), 0.28); border-color: transparent; }
 .leg { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 10px; vertical-align: -1px; }
 .leg-ok { background: var(--amber); margin-left: 0; }
@@ -1133,3 +1135,62 @@ html, body { overscroll-behavior-y: contain; }
 .tp-num { text-anchor: middle; font-size: 15px; fill: var(--ink); pointer-events: none; font-variant-numeric: tabular-nums; }
 .tp-num.in { font-size: 13px; fill: var(--ink-dim); }
 .tp-num.on { fill: var(--bg); font-weight: 700; }
+
+/* ---- Habit-Arten: Vermeiden und Menge ---- */
+.kind-tag { color: var(--ink-dim); border: 1px solid var(--border); border-radius: 999px; padding: 0 7px; font-size: 11px; line-height: 16px; flex-shrink: 0; }
+.amount-ring {
+  flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
+  background: conic-gradient(var(--amber) calc(var(--p) * 1%), color-mix(in srgb, var(--ink-dim) 30%, transparent) 0);
+  display: flex; align-items: center; justify-content: center;
+}
+.amount-ring span { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-elevated); display: flex; align-items: center; justify-content: center; font-size: 10.5px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.habit-card.done .amount-ring span { background: var(--amber); color: var(--bg); font-size: 16px; }
+.amount-row { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 0; }
+.amt-btn { min-width: 44px; height: 38px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border); background: none; color: var(--ink); font: inherit; font-size: 15px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.amt-btn.plus { background: color-mix(in srgb, var(--amber) 22%, transparent); border-color: var(--amber); }
+.amt-btn:disabled { opacity: 0.3; cursor: default; }
+.amt-btn:active { transform: scale(0.95); }
+.amt-val { flex: 1; height: 38px; background: none; border: none; color: var(--ink-dim); font: inherit; font-size: 13px; cursor: pointer; text-align: center; font-variant-numeric: tabular-nums; }
+.amt-val b { color: var(--ink); font-size: 17px; font-weight: 600; }
+.amount-input-row { display: flex; align-items: center; gap: 10px; }
+.amount-input-row .text-input { flex: 1; font-size: 22px; }
+
+/* Zielstrich in Balkendiagrammen (Schlaf, Menge) */
+.goal-chart .bar-track, .sleep-chart .bar-track {
+  background: linear-gradient(to top, transparent calc(var(--goal) - 1px), rgba(var(--tint), 0.45) calc(var(--goal) - 1px), rgba(var(--tint), 0.45) var(--goal), transparent var(--goal));
+}
+.bar.under { opacity: 0.55; }
+.goal-chart.dense .bar { width: 80%; }
+.goal-chart.dense .bar-label { font-size: 9px; overflow: visible; white-space: nowrap; }
+.cal-day.partial { background: color-mix(in srgb, var(--amber) calc(var(--fill, 30%) * 0.6), transparent); border-color: transparent; }
+
+/* Zeiten einer Nacht, mit dem Ändern-Knopf direkt daneben */
+.time-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; margin-bottom: 4px; background: rgba(var(--tint), 0.05); border-radius: 12px; }
+.tl-text { font-size: 15px; display: flex; flex-direction: column; gap: 1px; }
+.tl-text b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.tl-sub { font-size: 12px; color: var(--ink-dim); }
+.time-line .tool-btn { flex-shrink: 0; }
+/* Krankheit: eingeklappt, bis man sie braucht */
+.sick-box { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 4px; }
+.sick-box summary { list-style: none; cursor: pointer; padding: 10px 0; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--ink-dim); }
+.sick-box summary::-webkit-details-marker { display: none; }
+.sick-box summary::after { content: '▾'; margin-left: auto; transition: transform .2s; }
+.sick-box[open] summary::after { transform: rotate(180deg); }
+.sick-box[open] summary { color: var(--ink); }
+.sick-count { background: var(--amber); color: var(--bg); border-radius: 999px; font-size: 11px; min-width: 18px; text-align: center; padding: 0 5px; line-height: 18px; }
+
+/* Notizen und Symptome bearbeiten */
+.tag-editor { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.tag-row { display: flex; align-items: center; gap: 8px; }
+.tag-row .text-input { flex: 1; min-width: 0; padding: 9px 12px; font-size: 15px; }
+.tag-used { min-width: 28px; text-align: right; font-size: 12px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.tag-del { flex-shrink: 0; background: none; border: 1px solid var(--border); color: var(--danger); border-radius: 999px; padding: 8px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.tag-del.confirm { background: var(--danger); color: var(--bg); border-color: var(--danger); }
+.tag-row.add { margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--border); }
+#sleepGoalValue { white-space: nowrap; min-width: 6ch; text-align: center; }
+
+/* Lange drücken auf Notiz-Knöpfe: keine Textauswahl, kein Kontextmenü */
+.night-ed .chip[data-act="s-tag"], .night-ed .chip[data-act="s-sick"] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+
+/* weicher Übergang über der Leiste, damit Inhalt nicht hart abgeschnitten wird */
+.tabbar::before { content: ''; position: absolute; left: 0; right: 0; bottom: 100%; height: 28px; background: linear-gradient(to bottom, transparent, var(--bg)); pointer-events: none; }

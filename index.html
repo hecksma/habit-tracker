@@ -16,7 +16,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" /></noscript>
 <!-- Aussehen der App -->
-<link rel="stylesheet" href="css/style.css?v=2.0.2" />
+<link rel="stylesheet" href="css/style.css?v=2.1.0" />
 </head>
 <body>
 
@@ -32,6 +32,13 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
           <path d="M9 6h11M9 12h11M9 18h11"/>
           <circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>
+        </svg>
+      </button>
+      <!-- Nur im Schlaf-Bereich sichtbar: öffnet die Seite mit Notizen und Symptomen -->
+      <button type="button" class="icon-btn" id="notesBtn" aria-label="Notizen und Symptome" aria-pressed="false" hidden>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8a1.5 1.5 0 0 1 0 2.1l-5.9 5.9a1.5 1.5 0 0 1-2.1 0z"/>
+          <circle cx="8.5" cy="8.5" r="1.2"/>
         </svg>
       </button>
       <button type="button" class="icon-btn" id="settingsBtn" aria-label="Einstellungen">
@@ -85,8 +92,8 @@
 
 <div class="add-bar">
   <form class="add-form" id="addForm">
-    <input type="text" id="habitInput" placeholder="Neue Gewohnheit, z. B. 'Lesen'" maxlength="40" autocomplete="off" aria-label="Name der neuen Gewohnheit" />
-    <button type="submit" id="addBtn" aria-label="Hinzufügen">+</button>
+    <input type="text" id="habitInput" enterkeyhint="done" placeholder="Neue Gewohnheit, z. B. 'Lesen'" maxlength="40" autocomplete="off" aria-label="Name der neuen Gewohnheit" />
+    <button type="button" id="addBtn" aria-label="Neue Gewohnheit mit allen Einstellungen anlegen">+</button>
   </form>
 </div>
 
@@ -135,6 +142,29 @@
     <div class="field">
       <label for="sheetName">Name</label>
       <input type="text" id="sheetName" class="text-input" maxlength="40" autocomplete="off" />
+    </div>
+
+    <div class="field">
+      <span class="label" id="kindLabel">Art</span>
+      <div class="seg" id="kindSeg" role="group" aria-labelledby="kindLabel">
+        <button type="button" data-kind="do" aria-pressed="true">Tun</button>
+        <button type="button" data-kind="avoid" aria-pressed="false">Vermeiden</button>
+        <button type="button" data-kind="amount" aria-pressed="false">Menge</button>
+      </div>
+      <p class="hint" id="kindHint" style="margin:8px 0 0;"></p>
+    </div>
+
+    <div class="field" id="amountPane" hidden>
+      <div class="chips wrap" id="amtPresets" style="margin-bottom:12px;">
+        <button type="button" class="chip" data-t="3" data-u="l" data-s="0,25">Wasser</button>
+        <button type="button" class="chip" data-t="10000" data-u="Schritte" data-s="1000">Schritte</button>
+      </div>
+      <label class="label" for="amtTarget">Ziel pro Tag</label>
+      <input type="text" inputmode="decimal" id="amtTarget" class="text-input" autocomplete="off" placeholder="z. B. 3" />
+      <label class="label" for="amtUnit" style="margin-top:12px;">Einheit</label>
+      <input type="text" id="amtUnit" class="text-input" maxlength="12" autocomplete="off" placeholder="z. B. l" />
+      <label class="label" for="amtStep" style="margin-top:12px;">Schrittgröße (Plus-Knopf)</label>
+      <input type="text" inputmode="decimal" id="amtStep" class="text-input" autocomplete="off" placeholder="z. B. 0,25" />
     </div>
 
     <div class="field">
@@ -285,6 +315,38 @@
   </form>
 </dialog>
 
+<dialog id="tagSheet" aria-labelledby="tagSheetTitle">
+  <form id="tagSheetForm">
+    <h2 id="tagSheetTitle" tabindex="-1">Notiz bearbeiten</h2>
+    <label class="ne-label" for="tagSheetInput" style="margin-top:0;">Name</label>
+    <input type="text" id="tagSheetInput" class="text-input" maxlength="24" autocomplete="off" />
+    <p class="status error" id="tagSheetMsg" role="alert"></p>
+    <div class="sheet-actions">
+      <button type="button" class="btn danger" id="tagSheetDelete">Löschen</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="tagSheetCancel">Abbrechen</button>
+      <button type="submit" class="btn primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="amountSheet" aria-labelledby="amountTitle">
+  <form id="amountForm">
+    <h2 id="amountTitle" tabindex="-1">Menge</h2>
+    <p class="hint" id="amountDate" style="margin:0 0 12px;"></p>
+    <div class="amount-input-row">
+      <input type="text" inputmode="decimal" id="amountInput" class="text-input" autocomplete="off" aria-label="Menge" placeholder="0" />
+      <span id="amountUnit"></span>
+    </div>
+    <p class="status error" id="amountMsg" role="alert"></p>
+    <div class="sheet-actions">
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="amountCancel">Abbrechen</button>
+      <button type="submit" class="btn primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="timePick" aria-labelledby="tpTitle">
   <h2 id="tpTitle" tabindex="-1">Uhrzeit</h2>
   <div class="tp-date" id="tpDateRow" hidden>
@@ -362,13 +424,27 @@
     <summary>
       <span>
         <span class="setting-title">Notizen zur Nacht</span>
-        <span class="setting-desc">Schlagworte, die du bei einer Nacht anhaken kannst</span>
+        <span class="setting-desc">Schlagworte bearbeiten, löschen oder neu anlegen</span>
       </span>
       <span class="chevron" aria-hidden="true"></span>
     </summary>
     <div class="setting-body">
-      <p class="setting-desc">Neue Notizen legst du direkt bei einer Nacht mit „+ Neu“ an. Hier kannst du Schlagworte aus der Auswahl entfernen. Gespeicherte Nächte behalten ihre Notizen.</p>
-      <div class="tag-list" id="tagList"></div>
+      <p class="setting-desc">Zum Umbenennen auf den Namen tippen. Beim Umbenennen und Löschen ändern sich auch alle gespeicherten Nächte.</p>
+      <div class="tag-editor" id="tagList" data-kind="tag"></div>
+    </div>
+  </details>
+
+  <details class="setting" id="sickDetails" name="settings-section" data-area="sleep">
+    <summary>
+      <span>
+        <span class="setting-title">Krankheits-Symptome</span>
+        <span class="setting-desc">Die Auswahl unter „Krank?“ bearbeiten</span>
+      </span>
+      <span class="chevron" aria-hidden="true"></span>
+    </summary>
+    <div class="setting-body">
+      <p class="setting-desc">Zum Umbenennen auf den Namen tippen. Beim Umbenennen und Löschen ändern sich auch alle gespeicherten Nächte.</p>
+      <div class="tag-editor" id="sickTagList" data-kind="sick"></div>
     </div>
   </details>
 
@@ -422,20 +498,20 @@
 </dialog>
 
 <!-- Die Skripte laufen der Reihe nach. Jedes hat einen Bereich der App, siehe README.md -->
-<script src="js/core.js?v=2.0.2"></script>
-<script src="js/habits.js?v=2.0.2"></script>
-<script src="js/settings.js?v=2.0.2"></script>
-<script src="js/stats.js?v=2.0.2"></script>
-<script src="js/gym-data.js?v=2.0.2"></script>
-<script src="js/gym-records.js?v=2.0.2"></script>
-<script src="js/timepick.js?v=2.0.2"></script>
-<script src="js/sleep-data.js?v=2.0.2"></script>
-<script src="js/gym-view.js?v=2.0.2"></script>
-<script src="js/gym-workout.js?v=2.0.2"></script>
-<script src="js/sleep-view.js?v=2.0.2"></script>
-<script src="js/backup.js?v=2.0.2"></script>
-<script src="js/nav.js?v=2.0.2"></script>
-<script src="js/main.js?v=2.0.2"></script>
+<script src="js/core.js?v=2.1.0"></script>
+<script src="js/habits.js?v=2.1.0"></script>
+<script src="js/settings.js?v=2.1.0"></script>
+<script src="js/stats.js?v=2.1.0"></script>
+<script src="js/gym-data.js?v=2.1.0"></script>
+<script src="js/gym-records.js?v=2.1.0"></script>
+<script src="js/timepick.js?v=2.1.0"></script>
+<script src="js/sleep-data.js?v=2.1.0"></script>
+<script src="js/gym-view.js?v=2.1.0"></script>
+<script src="js/gym-workout.js?v=2.1.0"></script>
+<script src="js/sleep-view.js?v=2.1.0"></script>
+<script src="js/backup.js?v=2.1.0"></script>
+<script src="js/nav.js?v=2.1.0"></script>
+<script src="js/main.js?v=2.1.0"></script>
 
 </body>
 </html>

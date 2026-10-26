@@ -24,6 +24,41 @@ function getSchedule(h) {
   return { type: 'days', days: ALL_DAYS.slice() };
 }
 
+// Jede Gewohnheit hat eine Art (kind):
+//   'do'     → etwas tun (Standard, wie bisher)
+//   'avoid'  → etwas vermeiden (z. B. Rauchen): ein Haken heißt "heute durchgehalten"
+//   'amount' → eine Menge pro Tag (z. B. 3 Liter Wasser): erreicht man das Ziel, gilt der Tag als geschafft
+// Für Serie und Statistik zählt bei allen Arten dieselbe Liste "completions" (geschaffte Tage).
+// Bei 'amount' steht die Menge je Tag zusätzlich in "amounts" ({ '2026-10-26': 1.5 }).
+function kindOf(h) { return h && (h.kind === 'avoid' || h.kind === 'amount') ? h.kind : 'do'; }
+function getAmount(h) {
+  const a = (h && h.amount) || {};
+  const target = Number.isFinite(a.target) && a.target > 0 ? a.target : 1;
+  const step = Number.isFinite(a.step) && a.step > 0 ? a.step : 1;
+  const unit = typeof a.unit === 'string' ? a.unit.slice(0, 12) : '';
+  return { target, step, unit };
+}
+function amountOn(h, date) {
+  const v = h && h.amounts && h.amounts[date];
+  return Number.isFinite(v) && v > 0 ? v : 0;
+}
+const numFmt = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 });
+function amountText(h, v) { const a = getAmount(h); return numFmt.format(v) + (a.unit ? ' ' + a.unit : ''); }
+// Setzt die Menge eines Tages und gleicht den "geschafft"-Status mit dem Ziel ab
+function setAmount(h, date, v) {
+  v = Math.max(0, Math.round(v * 1000) / 1000);
+  h.amounts = h.amounts || {};
+  if (v > 0) h.amounts[date] = v; else delete h.amounts[date];
+  syncAmountDay(h, date);
+}
+function syncAmountDay(h, date) {
+  h.completions = h.completions || [];
+  const reached = amountOn(h, date) >= getAmount(h).target - 1e-9;
+  const i = h.completions.indexOf(date);
+  if (reached && i < 0) h.completions.push(date);
+  if (!reached && i >= 0) h.completions.splice(i, 1);
+}
+
 // Der erste Tag, ab dem Tage zählen. Davor wird nichts als "verpasst" gewertet.
 function firstDay(h) {
   const sorted = (h.completions || []).slice().sort();
@@ -75,6 +110,7 @@ function computeStreak(h, today) {
     if (done.has(key)) { streak++; continue; }
     if (!sched.days.includes(weekdayIdx(day))) continue;
     if (i === 0) continue;
+    if (kindOf(h) === 'avoid') break; // Vermeiden: kein Joker, ein verpasster Tag beendet die Serie
     const wk = fmt(weekStart(day));
     if (!joker[wk]) { joker[wk] = true; continue; }
     break;
@@ -166,11 +202,34 @@ function renderCard(h, today) {
 
   // Name einmal maskieren und überall verwenden
   const safeName = escapeHtml(h.name);
+  const kind = kindOf(h);
+  const kindTag = kind === 'avoid' ? '<span class="kind-tag">Vermeiden</span>' : '';
+  if (kind === 'amount') return renderAmountCard(h, today, streak, unitText, cells, safeName);
 
   return '<div class="habit-card ' + (isDone ? 'done' : '') + '">'
     + '<div class="habit-top">'
     +   '<button type="button" class="check-btn ' + (isDone ? 'done' : '') + '" data-action="toggle-day" data-id="' + h.id + '" data-date="' + today + '"'
-    +     ' aria-label="' + safeName + ' heute ' + (isDone ? 'zurücknehmen' : 'erledigen') + '">' + (isDone ? '✓' : '') + '</button>'
+    +     ' aria-label="' + safeName + (kind === 'avoid' ? (isDone ? ' heute: durchgehalten, zurücknehmen' : ' heute durchgehalten') : ' heute ' + (isDone ? 'zurücknehmen' : 'erledigen')) + '">' + (isDone ? '✓' : '') + '</button>'
+    +   '<div class="habit-info">'
+    +     '<p class="habit-name">' + safeName + '</p>'
+    +     '<div class="meta"><span class="streak"><span class="streak-num">' + streak.value + '</span> ' + unitText + '</span>'
+    +       '<span class="plan">' + planText(h, today) + '</span>' + kindTag
+    +       (streak.jokerUsed ? '<span class="joker">Joker genutzt</span>' : '') + '</div>'
+    +   '</div>'
+    +   '<button type="button" class="edit-btn" data-action="edit" data-id="' + h.id + '" aria-label="' + safeName + ' bearbeiten">⋯</button>'
+    + '</div>'
+    + (settings.showWeek ? '<div class="week">' + cells + '</div>' : '')
+    + '</div>';
+}
+
+function renderAmountCard(h, today, streak, unitText, cells, safeName) {
+  const a = getAmount(h);
+  const v = amountOn(h, today);
+  const pct = Math.min(100, Math.round(100 * v / a.target));
+  const isDone = v >= a.target - 1e-9;
+  return '<div class="habit-card amount ' + (isDone ? 'done' : '') + '">'
+    + '<div class="habit-top">'
+    +   '<span class="amount-ring" style="--p:' + pct + '" aria-hidden="true"><span>' + (isDone ? '✓' : pct + '%') + '</span></span>'
     +   '<div class="habit-info">'
     +     '<p class="habit-name">' + safeName + '</p>'
     +     '<div class="meta"><span class="streak"><span class="streak-num">' + streak.value + '</span> ' + unitText + '</span>'
@@ -178,6 +237,12 @@ function renderCard(h, today) {
     +       (streak.jokerUsed ? '<span class="joker">Joker genutzt</span>' : '') + '</div>'
     +   '</div>'
     +   '<button type="button" class="edit-btn" data-action="edit" data-id="' + h.id + '" aria-label="' + safeName + ' bearbeiten">⋯</button>'
+    + '</div>'
+    + '<div class="amount-row">'
+    +   '<button type="button" class="amt-btn" data-action="amt-add" data-id="' + h.id + '" data-sign="-1" aria-label="Eine Stufe weniger"' + (v <= 0 ? ' disabled' : '') + '>−</button>'
+    +   '<button type="button" class="amt-val" data-action="amt-open" data-id="' + h.id + '" data-date="' + today + '" aria-label="Menge heute eingeben">'
+    +     '<b>' + numFmt.format(v) + '</b> von ' + amountText(h, a.target) + '</button>'
+    +   '<button type="button" class="amt-btn plus" data-action="amt-add" data-id="' + h.id + '" data-sign="1" aria-label="Eine Stufe mehr">+' + numFmt.format(a.step) + '</button>'
     + '</div>'
     + (settings.showWeek ? '<div class="week">' + cells + '</div>' : '')
     + '</div>';
@@ -217,6 +282,7 @@ function render() {
 function toggleDay(id, date) {
   const habit = habits.find(h => h.id === id);
   if (!habit || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date > todayStr()) return;
+  if (kindOf(habit) === 'amount') { openAmountSheet(id, date); return; }
   habit.completions = habit.completions || [];
   const idx = habit.completions.indexOf(date);
   if (idx >= 0) habit.completions.splice(idx, 1);
@@ -234,7 +300,17 @@ contentEl.addEventListener('click', (e) => {
   const action = btn.dataset.action;
   if (action === 'toggle-day') toggleDay(btn.dataset.id, btn.dataset.date);
   if (action === 'edit') openSheet(btn.dataset.id);
+  if (action === 'amt-add') {
+    const hb = habits.find(x => x.id === btn.dataset.id);
+    if (!hb) return;
+    setAmount(hb, todayStr(), amountOn(hb, todayStr()) + Number(btn.dataset.sign) * getAmount(hb).step);
+    render(); saveHabits();
+  }
+  if (action === 'amt-open') openAmountSheet(btn.dataset.id, btn.dataset.date);
 });
+
+// Der Plus-Knopf öffnet die ausführliche Anlage (mit dem schon getippten Namen); Enter legt schnell nur den Namen an
+document.getElementById('addBtn').addEventListener('click', () => openSheet(null));
 
 addForm.addEventListener('submit', function(e) {
   e.preventDefault();
@@ -262,6 +338,10 @@ const sheetName = document.getElementById('sheetName');
 const sheetMsg = document.getElementById('sheetMsg');
 const chipsEl = document.getElementById('chips');
 const deleteBtn = document.getElementById('deleteBtn');
+const amtTarget = document.getElementById('amtTarget');
+const amtUnit = document.getElementById('amtUnit');
+const amtStep = document.getElementById('amtStep');
+function parseAmountNum(t) { const n = Number(String(t).trim().replace(',', '.')); return Number.isFinite(n) ? n : NaN; }
 let sheet = null; // Zwischenstand, solange das Fenster offen ist
 
 // Die sieben Tages-Knöpfe einmalig erzeugen
@@ -274,16 +354,37 @@ DAY_LABELS.forEach((label, i) => {
   chipsEl.appendChild(b);
 });
 
+// id = null: neue Gewohnheit mit allen Einstellungen anlegen (wird erst beim Speichern wirklich angelegt)
+function newHabitDraft(name) {
+  return {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+    name: name,
+    createdAt: todayStr(),
+    schedule: { type: 'days', days: ALL_DAYS.slice() },
+    completions: []
+  };
+}
+
 function openSheet(id) {
-  const h = habits.find(x => x.id === id);
+  const isNew = id === null;
+  const h = isNew ? newHabitDraft(habitInput.value.trim()) : habits.find(x => x.id === id);
   if (!h) return;
+  document.getElementById('sheetTitle').textContent = isNew ? 'Neue Gewohnheit' : 'Gewohnheit bearbeiten';
+  deleteBtn.hidden = isNew;
   const s = getSchedule(h);
   sheet = {
-    id: id,
+    id: h.id,
+    isNew: isNew,
+    draft: isNew ? h : null,
     mode: s.type,
     days: new Set(s.type === 'days' ? s.days : ALL_DAYS),
     times: s.type === 'weekly' ? s.times : 3,
+    kind: kindOf(h),
   };
+  const am = getAmount(h);
+  amtTarget.value = h.amount ? numFmt.format(am.target) : '';
+  amtUnit.value = h.amount ? am.unit : '';
+  amtStep.value = h.amount ? numFmt.format(am.step) : '';
   sheetName.value = h.name;
   disarm(deleteBtn);
   sheetMsg.textContent = '';
@@ -296,13 +397,22 @@ function openSheet(id) {
 function renderSheet() {
   if (!sheet) return;
   document.querySelectorAll('#planSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === sheet.mode)));
+  document.querySelectorAll('#kindSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.kind === sheet.kind)));
+  document.getElementById('amountPane').hidden = sheet.kind !== 'amount';
+  document.getElementById('kindHint').textContent = sheet.kind === 'avoid'
+    ? 'Du hakst jeden Tag ab, an dem du durchgehalten hast (z. B. nicht geraucht).'
+    : sheet.kind === 'amount'
+      ? 'Du zählst über den Tag eine Menge hoch. Mit Erreichen des Ziels gilt der Tag als geschafft.'
+      : 'Du hakst jeden Tag ab, an dem du es getan hast.';
   document.getElementById('daysPane').hidden = sheet.mode !== 'days';
   document.getElementById('weeklyPane').hidden = sheet.mode !== 'weekly';
   chipsEl.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(sheet.days.has(Number(c.dataset.day)))));
   document.getElementById('timesValue').textContent = sheet.times;
   document.getElementById('timesMinus').disabled = sheet.times <= 1;
   document.getElementById('timesPlus').disabled = sheet.times >= 7;
-  document.getElementById('planHint').textContent = sheet.mode === 'days'
+  document.getElementById('planHint').textContent = sheet.mode === 'days' && sheet.kind === 'avoid'
+    ? 'Bei „Vermeiden“ gibt es keinen Joker: Ein Tag ohne Haken beendet die Serie.'
+    : sheet.mode === 'days'
     ? 'Ein verpasster Tag pro Woche ist erlaubt (Joker). Beim zweiten verpassten Tag in einer Woche endet die Serie.'
     : 'Die Serie zählt Wochen, in denen du dein Ziel erreichst. Welche Tage du wählst, ist egal.';
 }
@@ -311,6 +421,19 @@ function closeSheet() {
   sheet = null;
   if (sheetEl.open) sheetEl.close();
 }
+
+document.getElementById('kindSeg').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-kind]');
+  if (!b || !sheet) return;
+  sheet.kind = b.dataset.kind;
+  sheetMsg.textContent = '';
+  renderSheet();
+});
+document.getElementById('amtPresets').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-t]');
+  if (!b) return;
+  amtTarget.value = b.dataset.t; amtUnit.value = b.dataset.u; amtStep.value = b.dataset.s;
+});
 
 document.getElementById('planSeg').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-mode]');
@@ -353,13 +476,67 @@ sheetForm.addEventListener('submit', (e) => {
   const name = sheetName.value.trim();
   if (!name) { sheetMsg.textContent = 'Gib der Gewohnheit einen Namen.'; return; }
   if (sheet.mode === 'days' && sheet.days.size === 0) { sheetMsg.textContent = 'Wähle mindestens einen Tag.'; return; }
-  const h = habits.find(x => x.id === sheet.id);
+  const h = sheet.isNew ? sheet.draft : habits.find(x => x.id === sheet.id);
   if (!h) { closeSheet(); return; }
+  let amount = null;
+  if (sheet.kind === 'amount') {
+    const target = parseAmountNum(amtTarget.value), step = parseAmountNum(amtStep.value), unit = amtUnit.value.trim().slice(0, 12);
+    if (!(target > 0) || target > 1000000) { sheetMsg.textContent = 'Gib ein Tagesziel über 0 an.'; return; }
+    if (!(step > 0) || step > target) { sheetMsg.textContent = 'Die Schrittgröße muss über 0 liegen und darf das Ziel nicht übersteigen.'; return; }
+    amount = { target, step, unit };
+  }
   h.name = name;
+  h.kind = sheet.kind;
+  if (amount) {
+    h.amount = amount;
+    // Bei geändertem Ziel die geschafften Tage neu bewerten
+    h.amounts = h.amounts || {};
+    Object.keys(h.amounts).forEach(d => syncAmountDay(h, d));
+  }
   h.schedule = sheet.mode === 'days'
     ? { type: 'days', days: Array.from(sheet.days).sort((a, b) => a - b) }
     : { type: 'weekly', times: sheet.times };
+  if (sheet.isNew) { habits.push(h); habitInput.value = ''; }
   render();
   saveHabits();
   closeSheet();
+});
+
+
+// ======================================================================
+// 7) Menge eintragen (für heute oder einen früheren Tag)
+// ======================================================================
+
+const amountSheetEl = document.getElementById('amountSheet');
+const amountInput = document.getElementById('amountInput');
+const amountMsg = document.getElementById('amountMsg');
+let amountCtx = null;
+
+function openAmountSheet(id, date) {
+  const h = habits.find(x => x.id === id);
+  if (!h || kindOf(h) !== 'amount') return;
+  amountCtx = { id, date };
+  const a = getAmount(h);
+  document.getElementById('amountTitle').textContent = h.name;
+  document.getElementById('amountDate').textContent = date === todayStr() ? 'Heute' : longDate(date);
+  document.getElementById('amountUnit').textContent = a.unit || '';
+  const v = amountOn(h, date);
+  amountInput.value = v ? numFmt.format(v) : '';
+  amountMsg.textContent = '';
+  amountSheetEl.showModal();
+  document.getElementById('amountTitle').focus({ preventScroll: true });
+}
+document.getElementById('amountCancel').addEventListener('click', () => amountSheetEl.close());
+amountSheetEl.addEventListener('click', (e) => { if (e.target === amountSheetEl) amountSheetEl.close(); });
+document.getElementById('amountForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (!amountCtx) return;
+  const h = habits.find(x => x.id === amountCtx.id);
+  const t = amountInput.value.trim();
+  const v = t === '' ? 0 : parseAmountNum(t);
+  if (!h) { amountSheetEl.close(); return; }
+  if (!(v >= 0) || v > 1000000) { amountMsg.textContent = 'Bitte gib eine Zahl ein (0 oder mehr).'; return; }
+  setAmount(h, amountCtx.date, v);
+  render(); saveHabits();
+  amountSheetEl.close();
 });

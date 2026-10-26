@@ -51,6 +51,19 @@ function isValidHabit(h) {
     && h.completions.every(d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d));
 }
 
+// Übernimmt Art, Mengenziel und Tagesmengen aus einer Sicherung und prüft sie dabei
+function cleanHabitExtras(src) {
+  const out = { kind: kindOf(src) };
+  if (out.kind === 'amount') {
+    const a = getAmount(src);
+    out.amount = { target: a.target, step: a.step, unit: a.unit };
+    out.amounts = {};
+    const m = src.amounts && typeof src.amounts === 'object' ? src.amounts : {};
+    Object.keys(m).forEach(d => { if (/^\d{4}-\d{2}-\d{2}$/.test(d) && Number.isFinite(m[d]) && m[d] > 0 && m[d] < 1e7) out.amounts[d] = m[d]; });
+  }
+  return out;
+}
+
 // Import: Die Daten aus der Datei werden mit den vorhandenen ZUSAMMENGEFÜHRT.
 // Nichts wird überschrieben oder gelöscht: neue Gewohnheiten kommen dazu,
 // bei gleicher ID werden die erledigten Tage vereint (der Plan bleibt, wie er hier ist).
@@ -69,13 +82,20 @@ async function importData(file) {
       const existing = habits.find(h => h.id === incoming.id);
       if (existing) {
         existing.completions = Array.from(new Set([...(existing.completions || []), ...incoming.completions]));
+        if (kindOf(existing) === 'amount' && kindOf(incoming) === 'amount') {
+          const extra = cleanHabitExtras(incoming).amounts;
+          existing.amounts = existing.amounts || {};
+          Object.keys(extra).forEach(d => { if (!(d in existing.amounts)) existing.amounts[d] = extra[d]; });
+          Object.keys(existing.amounts).forEach(d => syncAmountDay(existing, d));
+        }
       } else {
         habits.push({
           id: incoming.id,
           name: incoming.name.trim(),
           createdAt: typeof incoming.createdAt === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(incoming.createdAt) ? incoming.createdAt : todayStr(),
           schedule: getSchedule(incoming),
-          completions: Array.from(new Set(incoming.completions))
+          completions: Array.from(new Set(incoming.completions)),
+          ...cleanHabitExtras(incoming)
         });
         added++;
       }
