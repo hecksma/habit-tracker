@@ -1204,3 +1204,11 @@ html, body { overscroll-behavior-y: contain; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .name-row { display: flex; align-items: center; gap: 8px; min-width: 0; margin-bottom: 1px; }
 .name-row .habit-name { margin: 0; min-width: 0; }
+
+/* Vermeiden: ✕ statt Haken, rot bei einem Rückfall */
+.check-btn.x.slip { border-color: var(--danger); background-color: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); }
+.check-btn.x.slip svg { opacity: 1; }
+.habit-card.slipped { border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.day.slip .dot { border-color: var(--danger) !important; background: transparent; position: relative; }
+.day.slip .dot::after { content: '×'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--danger); font-size: 15px; font-weight: 700; line-height: 1; }
+.cal-day.slip { background: color-mix(in srgb, var(--danger) 22%, transparent); border-color: var(--danger); color: var(--danger); font-weight: 600; }

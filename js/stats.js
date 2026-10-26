@@ -46,7 +46,7 @@ document.querySelector('.habits-tabs').addEventListener('click', (e) => {
 // fromStr/toStr begrenzen den Zeitraum. Vor dem ersten Tag der Gewohnheit wird nichts gezählt.
 function habitStats(h, fromStr, today, toStr) {
   const sched = getSchedule(h);
-  const done = new Set(h.completions || []);
+  const done = doneSet(h);
   const first = firstDay(h);
   const start = fromStr > first ? fromStr : first;
   const end = toStr && toStr < today ? toStr : today;
@@ -110,7 +110,7 @@ function overallStats(fromStr, today, list) {
 
   // "Alles geschafft": Tage, an denen alle geplanten Habits (mit festen Tagen) erledigt wurden
   const fixed = list.filter(h => getSchedule(h).type === 'days')
-    .map(h => ({ days: getSchedule(h).days, done: new Set(h.completions || []), first: firstDay(h) }));
+    .map(h => ({ days: getSchedule(h).days, done: doneSet(h), first: firstDay(h) }));
   for (let d = parseDate(fromStr); fmt(d) <= today; d = addDays(d, 1)) {
     const key = fmt(d), idx = weekdayIdx(d);
     const due = fixed.filter(x => x.first <= key && x.days.includes(idx));
@@ -231,7 +231,8 @@ function amountChart(h, today, period) {
 // Monatskalender einer Gewohnheit: antippen trägt einen Tag nach oder nimmt ihn zurück
 function renderCalendar(h, today) {
   const sched = getSchedule(h);
-  const done = new Set(h.completions || []);
+  const done = doneSet(h);
+  const avoid = kindOf(h) === 'avoid', first = firstDay(h);
   const cur = today.slice(0, 7);
   const firstMonth = firstDay(h).slice(0, 7);
   let ym = statsState.month[h.id] || cur;
@@ -251,14 +252,16 @@ function renderCalendar(h, today) {
     const planned = sched.type === 'weekly' ? true : sched.days.includes(weekdayIdx(d));
     const cls = ['cal-day'];
     const isAmt = kindOf(h) === 'amount', av = isAmt ? amountOn(h, key) : 0;
+    const slip = avoid && isSlip(h, key);
     if (checked) cls.push('checked');
     else if (av > 0) cls.push('partial');
+    if (slip) cls.push('slip');
     if (key === today) cls.push('today');
-    if (!planned) cls.push('off');
+    if (!planned || (avoid && key < first)) cls.push('off');
     const style = !checked && av > 0 ? ' style="--fill:' + Math.round(100 * av / getAmount(h).target) + '%"' : '';
-    const state = isAmt ? amountText(h, av) : (checked ? (kindOf(h) === 'avoid' ? 'durchgehalten' : 'erledigt') : 'offen');
+    const state = isAmt ? amountText(h, av) : avoid ? (slip ? 'Rückfall' : 'sauber') : (checked ? 'erledigt' : 'offen');
     cells += '<button type="button" class="' + cls.join(' ') + '"' + style + ' data-action="toggle-day" data-id="' + h.id + '" data-date="' + key + '"'
-      + ' aria-label="' + n + '. ' + label + ': ' + state + '" aria-pressed="' + checked + '"' + (key > today ? ' disabled' : '') + '>' + n + '</button>';
+      + ' aria-label="' + n + '. ' + label + ': ' + state + '" aria-pressed="' + (avoid ? slip : checked) + '"' + (key > today ? ' disabled' : '') + '>' + n + '</button>';
   }
 
   return '<div class="cal-head">'
@@ -286,10 +289,20 @@ function renderHabitStats(h, s, today) {
       + '<div><div class="mini-label">Ziel erreicht</div><div class="mini-value">' + as.reached + ' von ' + as.days + ' Tagen</div></div>'
       + '<div><div class="mini-label">Dabei seit</div><div class="mini-value">' + longDate(firstDay(h)) + '</div></div>';
     amtBlock = '<div class="stats-title">Menge (Ziel: ' + amountText(h, getAmount(h).target) + ')</div>' + amountChart(h, today, statsState.period);
+  } else if (kind === 'avoid') {
+    const from = fmt(addDays(parseDate(today), -(statsState.period - 1)));
+    const slips = (h.slips || []).filter(d => d >= firstDay(h) && d <= today).sort();
+    const inPeriod = slips.filter(d => d >= from).length;
+    grid = '<div><div class="mini-label">Aktuelle Serie</div><div class="mini-value">' + streak.value + ' ' + unit + '</div></div>'
+      + '<div><div class="mini-label">Rekord-Serie</div><div class="mini-value">' + best + ' ' + unit + '</div></div>'
+      + '<div><div class="mini-label">Rückfälle im Zeitraum</div><div class="mini-value">' + inPeriod + 'x</div></div>'
+      + '<div><div class="mini-label">Rückfälle gesamt</div><div class="mini-value">' + slips.length + 'x</div></div>'
+      + '<div><div class="mini-label">Letzter Rückfall</div><div class="mini-value">' + (slips.length ? longDate(slips[slips.length - 1]) : '–') + '</div></div>'
+      + '<div><div class="mini-label">Dabei seit</div><div class="mini-value">' + longDate(firstDay(h)) + '</div></div>';
   } else {
     grid = '<div><div class="mini-label">Aktuelle Serie</div><div class="mini-value">' + streak.value + ' ' + unit + '</div></div>'
       + '<div><div class="mini-label">Rekord-Serie</div><div class="mini-value">' + best + ' ' + unit + '</div></div>'
-      + '<div><div class="mini-label">' + T.all + '</div><div class="mini-value">' + (h.completions || []).length + 'x</div></div>'
+      + '<div><div class="mini-label">' + T.all + '</div><div class="mini-value">' + doneSet(h).size + 'x</div></div>'
       + '<div><div class="mini-label">Dabei seit</div><div class="mini-value">' + longDate(firstDay(h)) + '</div></div>';
   }
   return '<details class="stat-habit" data-id="' + h.id + '" name="stat-habit"' + (statsState.openId === h.id ? ' open' : '') + '>'

@@ -28,7 +28,9 @@ function getSchedule(h) {
 //   'do'     → etwas tun (Standard, wie bisher)
 //   'avoid'  → etwas vermeiden (z. B. Rauchen): ein Haken heißt "heute durchgehalten"
 //   'amount' → eine Menge pro Tag (z. B. 3 Liter Wasser): erreicht man das Ziel, gilt der Tag als geschafft
-// Für Serie und Statistik zählt bei allen Arten dieselbe Liste "completions" (geschaffte Tage).
+// Für Serie und Statistik zählt die Menge der geschafften Tage (doneSet):
+//   'do' und 'amount': die Liste "completions" (bei 'amount' automatisch aus der Menge abgeleitet)
+//   'avoid': jeder Tag seit dem Anlegen zählt von selbst als geschafft, außer er steht in "slips" (Rückfälle)
 // Bei 'amount' steht die Menge je Tag zusätzlich in "amounts" ({ '2026-10-26': 1.5 }).
 function kindOf(h) { return h && (h.kind === 'avoid' || h.kind === 'amount') ? h.kind : 'do'; }
 function getAmount(h) {
@@ -38,6 +40,21 @@ function getAmount(h) {
   const unit = typeof a.unit === 'string' ? a.unit.slice(0, 12) : '';
   return { target, step, unit };
 }
+const doneCache = new WeakMap();
+function doneSet(h) {
+  if (kindOf(h) !== 'avoid') return new Set(h.completions || []);
+  const today = todayStr(), slips = Array.isArray(h.slips) ? h.slips : [];
+  const first = firstDay(h);
+  const sig = today + '|' + first + '|' + slips.join(',');
+  const c = doneCache.get(h);
+  if (c && c.sig === sig) return c.set;
+  const slipSet = new Set(slips), set = new Set();
+  for (let d = parseDate(first); fmt(d) <= today; d = addDays(d, 1)) { const k = fmt(d); if (!slipSet.has(k)) set.add(k); }
+  doneCache.set(h, { sig, set });
+  return set;
+}
+function isSlip(h, date) { return kindOf(h) === 'avoid' && Array.isArray(h.slips) && h.slips.includes(date); }
+
 function amountOn(h, date) {
   const v = h && h.amounts && h.amounts[date];
   return Number.isFinite(v) && v > 0 ? v : 0;
@@ -83,7 +100,7 @@ function firstDay(h) {
 function computeStreak(h, today) {
   today = today || todayStr();
   const sched = getSchedule(h);
-  const done = new Set(h.completions || []);
+  const done = doneSet(h);
   const first = firstDay(h);
   const t = parseDate(today);
   let streak = 0;
@@ -109,8 +126,8 @@ function computeStreak(h, today) {
     if (key < first) break;
     if (done.has(key)) { streak++; continue; }
     if (!sched.days.includes(weekdayIdx(day))) continue;
-    if (i === 0) continue;
-    if (kindOf(h) === 'avoid') break; // Vermeiden: kein Joker, ein verpasster Tag beendet die Serie
+    if (kindOf(h) === 'avoid') break;
+    if (i === 0) continue; // Vermeiden: kein Joker, ein verpasster Tag beendet die Serie
     const wk = fmt(weekStart(day));
     if (!joker[wk]) { joker[wk] = true; continue; }
     break;
@@ -120,7 +137,7 @@ function computeStreak(h, today) {
 
 // Wie oft wurde die Gewohnheit in der Woche von "today" erledigt?
 function countThisWeek(h, today) {
-  const done = new Set(h.completions || []);
+  const done = doneSet(h);
   const ws = weekStart(parseDate(today));
   let n = 0;
   for (let k = 0; k < 7; k++) if (done.has(fmt(addDays(ws, k)))) n++;
@@ -130,7 +147,7 @@ function countThisWeek(h, today) {
 // Ist die Gewohnheit heute "dran"? Wird für die Zeile oben (z. B. "2 von 3") gebraucht.
 function isDueToday(h, today) {
   const sched = getSchedule(h);
-  const doneToday = (h.completions || []).includes(today);
+  const doneToday = doneSet(h).has(today);
   if (sched.type === 'days') return sched.days.includes(weekdayIdx(parseDate(today))) || doneToday;
   return doneToday || countThisWeek(h, today) < sched.times;
 }
@@ -174,6 +191,7 @@ function saveHabits() {
 // ======================================================================
 
 // Haken-Symbol im Stil der übrigen Symbole (Linie, abgerundete Enden)
+const X_SVG = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 8l8 8M16 8l-8 8"/></svg>';
 const CHECK_SVG = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.2 13.2l2.8 2.8L18.2 7.8"/></svg>';
 
 // Warnung für Gewohnheiten mit "X mal pro Woche": Wird es eng, sagt eine kleine Markierung Bescheid.
@@ -187,7 +205,7 @@ function weekWarning(h, today) {
   const needed = sched.times - countThisWeek(h, today);
   if (needed <= 0) return null;
   const t = parseDate(today);
-  const doneToday = (h.completions || []).includes(today);
+  const doneToday = doneSet(h).has(today);
   const left = 7 - weekdayIdx(t) - (doneToday ? 1 : 0); // übrige Tage, an denen noch etwas zählen kann
   if (needed > left) return { kind: 'lost', text: 'Ziel verfehlt', tip: 'Das Wochenziel ist nicht mehr zu schaffen' };
   if (needed < left) return null;
@@ -203,9 +221,11 @@ function warnTag(h, today) {
 }
 
 function renderCard(h, today) {
-  const done = new Set(h.completions || []);
+  const done = doneSet(h);
   const sched = getSchedule(h);
-  const isDone = done.has(today);
+  const kind = kindOf(h);
+  const slipToday = isSlip(h, today);
+  const isDone = kind === 'avoid' ? false : done.has(today); // bei Vermeiden ist "sauber" der Normalzustand, kein Erfolg zum Hervorheben
   const streak = computeStreak(h, today);
   const unitText = streak.unit === 'weeks'
     ? (streak.value === 1 ? 'Woche Serie' : 'Wochen Serie')
@@ -218,26 +238,28 @@ function renderCard(h, today) {
     const d = addDays(ws, k);
     const key = fmt(d);
     const checked = done.has(key);
+    const slip = isSlip(h, key);
     const planned = sched.type === 'weekly' ? true : sched.days.includes(k);
     const classes = ['day'];
     if (checked) classes.push('checked');
+    if (slip) classes.push('slip');
     if (key === today) classes.push('today');
-    if (!planned) classes.push('off');
-    const label = DAY_LABELS[k] + ' ' + d.getDate() + '.' + (d.getMonth() + 1) + '.: ' + (checked ? 'erledigt' : 'offen');
+    if (!planned || (kind === 'avoid' && key < firstDay(h))) classes.push('off');
+    const label = DAY_LABELS[k] + ' ' + d.getDate() + '.' + (d.getMonth() + 1) + '.: ' + (kind === 'avoid' ? (slip ? 'Rückfall' : 'sauber') : (checked ? 'erledigt' : 'offen'));
     cells += '<button type="button" class="' + classes.join(' ') + '" data-action="toggle-day" data-id="' + h.id + '" data-date="' + key + '"'
-      + ' aria-label="' + label + '" aria-pressed="' + checked + '"' + (key > today ? ' disabled' : '') + '>'
+      + ' aria-label="' + label + '" aria-pressed="' + (kind === 'avoid' ? slip : checked) + '"' + (key > today ? ' disabled' : '') + '>'
       + '<span class="day-label">' + DAY_LABELS[k] + '</span><span class="dot"></span></button>';
   }
 
   // Name einmal maskieren und überall verwenden
   const safeName = escapeHtml(h.name);
-  const kind = kindOf(h);
   if (kind === 'amount') return renderAmountCard(h, today, streak, unitText, cells, safeName);
 
-  return '<div class="habit-card ' + (isDone ? 'done' : '') + '">'
+  const avoid = kind === 'avoid';
+  return '<div class="habit-card ' + (isDone ? 'done' : '') + (slipToday ? ' slipped' : '') + '">'
     + '<div class="habit-top">'
-    +   '<button type="button" class="check-btn ' + (isDone ? 'done' : '') + '" data-action="toggle-day" data-id="' + h.id + '" data-date="' + today + '"'
-    +     ' aria-label="' + safeName + (kind === 'avoid' ? (isDone ? ' heute: durchgehalten, zurücknehmen' : ' heute durchgehalten') : ' heute ' + (isDone ? 'zurücknehmen' : 'erledigen')) + '">' + CHECK_SVG + '</button>'
+    +   '<button type="button" class="check-btn ' + (avoid ? 'x ' : '') + (isDone ? 'done' : '') + (slipToday ? ' slip' : '') + '" data-action="toggle-day" data-id="' + h.id + '" data-date="' + today + '"'
+    +     ' aria-label="' + safeName + (avoid ? (slipToday ? ' heute: Rückfall, zurücknehmen' : ' heute Rückfall eintragen') : ' heute ' + (isDone ? 'zurücknehmen' : 'erledigen')) + '" aria-pressed="' + (avoid ? slipToday : isDone) + '">' + (avoid ? X_SVG : CHECK_SVG) + '</button>'
     +   '<div class="habit-info">'
     +     '<div class="name-row"><p class="habit-name">' + safeName + '</p>' + warnTag(h, today) + '</div>'
     +     '<div class="meta"><span class="streak"><span class="streak-num">' + streak.value + '</span> ' + unitText + '</span>'
@@ -294,7 +316,7 @@ function render() {
   }
 
   const due = habits.filter(h => isDueToday(h, today));
-  const doneCount = due.filter(h => (h.completions || []).includes(today)).length;
+  const doneCount = due.filter(h => doneSet(h).has(today)).length;
   subtitleEl.textContent = due.length === 0
     ? 'Heute ist nichts geplant.'
     : doneCount + ' von ' + due.length + ' heute erledigt';
@@ -311,6 +333,15 @@ function toggleDay(id, date) {
   const habit = habits.find(h => h.id === id);
   if (!habit || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date > todayStr()) return;
   if (kindOf(habit) === 'amount') { openAmountSheet(id, date); return; }
+  if (kindOf(habit) === 'avoid') {
+    // Vermeiden: Tippen trägt einen Rückfall ein oder nimmt ihn zurück (alle anderen Tage zählen von selbst)
+    if (date < firstDay(habit)) return;
+    habit.slips = Array.isArray(habit.slips) ? habit.slips : [];
+    const i = habit.slips.indexOf(date);
+    if (i >= 0) habit.slips.splice(i, 1); else habit.slips.push(date);
+    render(); saveHabits();
+    return;
+  }
   habit.completions = habit.completions || [];
   const idx = habit.completions.indexOf(date);
   if (idx >= 0) habit.completions.splice(idx, 1);
@@ -429,7 +460,7 @@ function renderSheet() {
   document.querySelectorAll('#kindSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.kind === sheet.kind)));
   document.getElementById('amountPane').hidden = sheet.kind !== 'amount';
   document.getElementById('kindHint').textContent = sheet.kind === 'avoid'
-    ? 'Du hakst jeden Tag ab, an dem du durchgehalten hast (z. B. nicht geraucht).'
+    ? 'Jeder Tag zählt von selbst als geschafft. Du trägst nur Rückfälle ein (✕).'
     : sheet.kind === 'amount'
       ? 'Du zählst über den Tag eine Menge hoch. Mit Erreichen des Ziels gilt der Tag als geschafft.'
       : 'Du hakst jeden Tag ab, an dem du es getan hast.';
@@ -440,7 +471,7 @@ function renderSheet() {
   document.getElementById('timesMinus').disabled = sheet.times <= 1;
   document.getElementById('timesPlus').disabled = sheet.times >= 7;
   document.getElementById('planHint').textContent = sheet.mode === 'days' && sheet.kind === 'avoid'
-    ? 'Bei „Vermeiden“ gibt es keinen Joker: Ein Tag ohne Haken beendet die Serie.'
+    ? 'Bei „Vermeiden“ gibt es keinen Joker: Ein Rückfall an einem geplanten Tag beendet die Serie.'
     : sheet.mode === 'days'
     ? 'Ein verpasster Tag pro Woche ist erlaubt (Joker). Beim zweiten verpassten Tag in einer Woche endet die Serie.'
     : 'Die Serie zählt Wochen, in denen du dein Ziel erreichst. Welche Tage du wählst, ist egal.';
@@ -516,6 +547,7 @@ sheetForm.addEventListener('submit', (e) => {
   }
   h.name = name;
   h.kind = sheet.kind;
+  if (sheet.kind === 'avoid' && !Array.isArray(h.slips)) h.slips = [];
   if (amount) {
     h.amount = amount;
     // Bei geändertem Ziel die geschafften Tage neu bewerten

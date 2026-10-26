@@ -61,6 +61,9 @@ function cleanHabitExtras(src) {
     const m = src.amounts && typeof src.amounts === 'object' ? src.amounts : {};
     Object.keys(m).forEach(d => { if (/^\d{4}-\d{2}-\d{2}$/.test(d) && Number.isFinite(m[d]) && m[d] > 0 && m[d] < 1e7) out.amounts[d] = m[d]; });
   }
+  if (out.kind === 'avoid') {
+    out.slips = Array.from(new Set((Array.isArray(src.slips) ? src.slips : []).filter(d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)))).sort();
+  }
   return out;
 }
 
@@ -82,6 +85,9 @@ async function importData(file) {
       const existing = habits.find(h => h.id === incoming.id);
       if (existing) {
         existing.completions = Array.from(new Set([...(existing.completions || []), ...incoming.completions]));
+        if (kindOf(existing) === 'avoid' && kindOf(incoming) === 'avoid') {
+          existing.slips = Array.from(new Set([...(existing.slips || []), ...cleanHabitExtras(incoming).slips])).sort();
+        }
         if (kindOf(existing) === 'amount' && kindOf(incoming) === 'amount') {
           const extra = cleanHabitExtras(incoming).amounts;
           existing.amounts = existing.amounts || {};
