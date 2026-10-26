@@ -44,11 +44,11 @@
   --bg-elevated: #2B1719;
   --ink: #F3E6DE;
   --ink-dim: #B8A097;
-  --amber: #F4A259;      /* Orange: Akzent, "Ziel erreicht" */
-  --sage: #E9B85A;       /* Warmes Gelb: Hauptfarbe */
+  --amber: #CC8B62;      /* Orange: Akzent, "Ziel erreicht" */
+  --sage: #C9A26E;       /* Gedämpftes Sandgold: Hauptfarbe */
   --danger: #FF8A7A;
   --tint: 247, 235, 227;
-  --accent-rgb: 244, 162, 89;
+  --accent-rgb: 204, 139, 98;
   --backdrop: rgba(20, 6, 8, 0.78);
 }
 
@@ -768,7 +768,7 @@ dialog h2 {
   z-index: 5;
   display: flex;
   justify-content: center;
-  background: #1A2330; /* in allen Bereichen gleich, damit es zum Streifen darunter passt (manifest.json) */
+  background: #25211F; /* in allen Bereichen gleich, damit es zum Streifen darunter passt (manifest.json) */
   border-top: 1px solid var(--border);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }

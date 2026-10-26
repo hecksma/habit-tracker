@@ -149,9 +149,7 @@ function sleepingHtml() {
     + '<p class="hint" id="sleepLeft" style="margin:0 0 12px;">' + sleepLeftText() + '</p>'
     + '<label class="ne-label" for="sleepWake2">Weckzeit ändern</label>'
     + '<input type="text" readonly id="sleepWake2" class="time-input tp" data-tp="time" data-title="Wecken um" value="' + a.time + '" aria-label="Weckzeit" />'
-    + '<div class="ne-label" style="margin-top:16px;">Wecker in der Uhr-App <span>Versuch: ob dein Handy das zulässt, zeigt sich</span></div>'
-    + '<div class="tool-row"><a class="tool-btn" href="' + escapeHtml(alarmLink(a.time, false)) + '">Wecker stellen (Test)</a>'
-    + '<a class="tool-btn" href="' + escapeHtml(alarmLink(a.time, true)) + '">Wecker-Liste öffnen</a></div>'
+    + '<p class="hint" style="margin:16px 0 0;">Vergiss nicht, den Wecker in der Uhr-App auf <b id="sleepHintTime">' + a.time + '</b> zu stellen.</p>'
     + '<div class="end-row"><button type="button" class="btn danger" data-act="s-cancel">Abbrechen</button><span class="spacer"></span>'
     + '<button type="button" class="btn" data-act="s-up">Jetzt aufgestanden</button></div></div>';
 }
@@ -303,6 +301,7 @@ sleepEl.addEventListener('change', (e) => {
     sleepActive.wake = w.getTime(); sleepActive.time = e.target.value;
     saveSleepActive();
     document.getElementById('sleepBig').textContent = sleepActive.time;
+    document.getElementById('sleepHintTime').textContent = sleepActive.time;
     document.getElementById('sleepLeft').textContent = sleepLeftText();
   }
 });
