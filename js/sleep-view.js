@@ -38,17 +38,27 @@ function defaultWakeTime() {
 
 // ---- Speichern einer Nacht ----
 
+// Notizen für die kommende Nacht. Sie bleiben nach dem Anhaken gespeichert (auch über Mitternacht)
+// und wandern beim Aufwachen in die Nacht. Ist nichts passiert und die Nacht läuft nicht, verfallen sie nach 20 Stunden.
+function getDraft() {
+  const d = sleep.draft;
+  if (!d || (!sleepActive && Date.now() - d.at > 20 * 3600e3)) sleep.draft = { at: Date.now(), tags: [], sick: [] };
+  return sleep.draft;
+}
+
 function finishNight(wakeMs, how) {
   if (!sleepActive) return null;
+  const dr = getDraft();
   const n = {
     id: 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    bed: fmtDT(new Date(sleepActive.bed)), wake: fmtDT(new Date(wakeMs)), rating: null, tags: [], sick: [], how
+    bed: fmtDT(new Date(sleepActive.bed)), wake: fmtDT(new Date(wakeMs)), rating: null, tags: dr.tags.slice(), sick: dr.sick.slice(), how
   };
   const clean = sanitizeSleep({ nights: [n], tags: sleep.tags, sickTags: sleep.sickTags });
   if (!clean.nights.length) return null;
   const before = JSON.stringify(sleep);
   sleep.nights.push(clean.nights[0]);
   sleep.nights.sort((a, b) => (a.bed < b.bed ? -1 : a.bed > b.bed ? 1 : 0));
+  sleep.draft = null;
   if (!saveSleep()) { sleep = JSON.parse(before); return null; }
   sleepActive = null; saveSleepActive();
   sleepState.askEdit = false; sleepState.asked = false;
@@ -57,24 +67,38 @@ function finishNight(wakeMs, how) {
 
 // ---- Editor einer Nacht (Gefühl, Notizen, Zeiten) ----
 
+// Notiz-Knöpfe und der eingeklappte Bereich "Krank?" (für eine Nacht oder für die kommende Nacht, nid = 'draft')
+function notesChipsHtml(src, nid) {
+  const chips = sleep.tags.map((t, i) => '<button type="button" class="chip" data-act="s-tag" data-id="' + nid + '" data-ti="' + i + '" aria-pressed="' + src.tags.includes(t) + '">' + escapeHtml(t) + '</button>').join('');
+  const sickChips = sleep.sickTags.map((t, i) => '<button type="button" class="chip" data-act="s-sick" data-id="' + nid + '" data-ti="' + i + '" aria-pressed="' + src.sick.includes(t) + '">' + escapeHtml(t) + '</button>').join('');
+  const newRow = (kind) => sleepState.newTagFor === nid && sleepState.newTagKind === kind
+    ? '<div class="newtag-row"><input type="text" class="text-input" id="newTagInput" maxlength="24" placeholder="' + (kind === 'sick' ? 'z. B. Migräne …' : 'z. B. Sport, Reise …') + '" aria-label="Neue Notiz" /><button type="button" class="btn primary" data-act="s-addtag" data-id="' + nid + '">Hinzufügen</button></div>' : '';
+  return '<div class="chips wrap">' + chips + '<button type="button" class="chip add" data-act="s-newtag" data-kind="tag" data-id="' + nid + '">+ Neu</button></div>'
+    + newRow('tag')
+    + '<details class="sick-box" data-sick="' + nid + '"' + (src.sick.length || sleepState.sickOpen === nid ? ' open' : '') + '><summary>Krank?' + (src.sick.length ? '<span class="sick-count">' + src.sick.length + '</span>' : '') + '</summary>'
+    +   '<div class="chips wrap">' + sickChips + '<button type="button" class="chip add" data-act="s-newtag" data-kind="sick" data-id="' + nid + '">+ Neu</button></div>'
+    +   newRow('sick')
+    + '</details>';
+}
+
+// Eingeklappter Bereich für die kommende Nacht (auf der Seite "Gute Nacht" und während der Nacht)
+function draftBoxHtml() {
+  const d = getDraft();
+  const count = d.tags.length + d.sick.length;
+  return '<details class="draft-box" data-draft="1"' + (sleepState.draftOpen || sleepState.newTagFor === 'draft' ? ' open' : '') + '><summary>Was war heute?'
+    + (count ? '<span class="sick-count">' + count + '</span>' : '<span class="draft-opt">optional</span>') + '</summary>'
+    + notesChipsHtml(d, 'draft') + '</details>';
+}
+
 function nightEditorHtml(n) {
   const nid = escapeHtml(n.id);
-  const chips = sleep.tags.map((t, i) => '<button type="button" class="chip" data-act="s-tag" data-id="' + nid + '" data-ti="' + i + '" aria-pressed="' + n.tags.includes(t) + '">' + escapeHtml(t) + '</button>').join('');
-  const sickChips = sleep.sickTags.map((t, i) => '<button type="button" class="chip" data-act="s-sick" data-id="' + nid + '" data-ti="' + i + '" aria-pressed="' + n.sick.includes(t) + '">' + escapeHtml(t) + '</button>').join('');
-  const newRow = (kind) => sleepState.newTagFor === n.id && sleepState.newTagKind === kind
-    ? '<div class="newtag-row"><input type="text" class="text-input" id="newTagInput" maxlength="24" placeholder="' + (kind === 'sick' ? 'z. B. Migräne …' : 'z. B. Sport, Reise …') + '" aria-label="Neue Notiz" /><button type="button" class="btn primary" data-act="s-addtag" data-id="' + nid + '">Hinzufügen</button></div>' : '';
   return '<div class="night-ed">'
     + '<div class="time-line"><span class="tl-text"><span><b>' + clockText(parseDT(n.bed)) + '</b> bis <b>' + clockText(parseDT(n.wake)) + '</b> Uhr</span><span class="tl-sub">' + fmtDur(nightMinutes(n)) + ' Schlaf</span></span>'
     +   '<button type="button" class="tool-btn" data-act="s-times" data-id="' + nid + '">Zeiten ändern</button></div>'
     + '<div class="ne-label">Wie fühlst du dich? <span>1 = müde, 5 = fit</span></div>'
     + '<div class="chips wrap">' + [1, 2, 3, 4, 5].map(v => '<button type="button" class="chip" data-act="s-rate" data-id="' + nid + '" data-v="' + v + '" aria-pressed="' + (n.rating === v) + '">' + v + '</button>').join('') + '</div>'
     + '<div class="ne-label">Notizen zur Nacht <span>optional · lange drücken zum Bearbeiten</span></div>'
-    + '<div class="chips wrap">' + chips + '<button type="button" class="chip add" data-act="s-newtag" data-kind="tag" data-id="' + nid + '">+ Neu</button></div>'
-    + newRow('tag')
-    + '<details class="sick-box" data-sick="' + nid + '"' + (n.sick.length || sleepState.sickOpen === n.id ? ' open' : '') + '><summary>Krank?' + (n.sick.length ? '<span class="sick-count">' + n.sick.length + '</span>' : '') + '</summary><p class="hint" style="margin:0 0 8px;">Lange auf ein Symptom drücken zum Bearbeiten.</p>'
-    +   '<div class="chips wrap">' + sickChips + '<button type="button" class="chip add" data-act="s-newtag" data-kind="sick" data-id="' + nid + '">+ Neu</button></div>'
-    +   newRow('sick')
-    + '</details>'
+    + notesChipsHtml(n, nid)
     + '</div>';
 }
 
@@ -141,6 +165,7 @@ function goodNightHtml() {
     + '<p class="hint" id="sleepPlan" style="margin:8px 0 12px;">' + planLineText(time) + '</p>'
     + '<div class="ne-label">Vorschlag nach Schlafzyklen <span>etwa 90 Minuten pro Zyklus</span></div>'
     + '<div class="chips wrap">' + chips + '</div>'
+    + draftBoxHtml()
     + '<div class="start-row" style="margin-top:16px;"><button type="button" class="btn primary" data-act="s-start">Gute Nacht</button></div></div>';
 }
 
@@ -152,6 +177,7 @@ function sleepingHtml() {
     + '<label class="ne-label" for="sleepWake2">Weckzeit ändern</label>'
     + '<input type="text" readonly id="sleepWake2" class="time-input tp" data-tp="time" data-title="Wecken um" value="' + a.time + '" aria-label="Weckzeit" />'
     + '<p class="hint" style="margin:16px 0 0;">Vergiss nicht, den Wecker in der Uhr-App auf <b id="sleepHintTime">' + a.time + '</b> zu stellen.</p>'
+    + draftBoxHtml()
     + '<div class="end-row"><button type="button" class="btn danger" data-act="s-cancel">Abbrechen</button><span class="spacer"></span>'
     + '<button type="button" class="btn" data-act="s-up">Jetzt aufgestanden</button></div></div>';
 }
@@ -237,7 +263,8 @@ sleepEl.addEventListener('click', (e) => {
   const b = e.target.closest('[data-act]');
   if (!b) return;
   const act = b.dataset.act;
-  const night = b.dataset.id ? sleep.nights.find(n => n.id === b.dataset.id) : null;
+  const night = b.dataset.id === 'draft' ? getDraft() : b.dataset.id ? sleep.nights.find(n => n.id === b.dataset.id) : null;
+  if (night && night === sleep.draft) night.at = Date.now();
   if (act === 's-cycle') {
     const inp = document.getElementById('sleepWake');
     inp.value = b.dataset.time; sleepState.draftWake = b.dataset.time;
@@ -266,7 +293,7 @@ sleepEl.addEventListener('click', (e) => {
   }
   else if (act === 's-sick' && night) {
     const t = sleep.sickTags[Number(b.dataset.ti)];
-    if (t) { night.sick = night.sick.includes(t) ? night.sick.filter(x => x !== t) : night.sick.concat(t); sleepState.sickOpen = night.id; saveSleep(); renderSleep(); }
+    if (t) { night.sick = night.sick.includes(t) ? night.sick.filter(x => x !== t) : night.sick.concat(t); sleepState.sickOpen = b.dataset.id; saveSleep(); renderSleep(); }
   }
   else if (act === 's-newtag') {
     const kind = b.dataset.kind === 'sick' ? 'sick' : 'tag';
@@ -329,6 +356,7 @@ sleepEl.addEventListener('toggle', (e) => {
     if (d.open) sleepState.openId = d.dataset.nid;
     else if (sleepState.openId === d.dataset.nid) sleepState.openId = null;
   }
+  if (d.matches && d.matches('details[data-draft]')) sleepState.draftOpen = d.open;
   if (d.matches && d.matches('details[data-sick]')) {
     if (d.open) sleepState.sickOpen = d.dataset.sick;
     else if (sleepState.sickOpen === d.dataset.sick) sleepState.sickOpen = null;
@@ -424,6 +452,7 @@ function renameTag(kind, i, value) {
   if (list.some((x, j) => j !== i && x.toLowerCase() === t.toLowerCase())) return '„' + t + '“ gibt es schon.';
   list[i] = t;
   sleep.nights.forEach(n => { n[K.key] = n[K.key].map(x => x === old ? t : x); });
+  if (sleep.draft) sleep.draft[K.key] = sleep.draft[K.key].map(x => x === old ? t : x);
   saveSleep();
   return '';
 }
@@ -436,6 +465,7 @@ function deleteTag(kind, i) {
   if (t === undefined) return;
   list.splice(i, 1);
   sleep.nights.forEach(n => { n[K.key] = n[K.key].filter(x => x !== t); });
+  if (sleep.draft) sleep.draft[K.key] = sleep.draft[K.key].filter(x => x !== t);
   saveSleep();
 }
 

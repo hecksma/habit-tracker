@@ -22,21 +22,26 @@
   color-scheme: dark; /* Eingebaute Elemente (Scrollleisten, Auswahlfelder) im dunklen Stil */
 }
 
-/* Farbschema des Gym-Bereichs: kühles Nachtblau mit Violett.
+/* Farbschema des Gym-Bereichs: Anthrazit mit Stahlblau.
    Das Skript setzt data-area="gym" am <html>, sobald du im Gym bist. Alles in der App
    benutzt nur die Variablen oben, deshalb genügt es, sie hier zu überschreiben. */
 :root[data-area="gym"] {
-  --bg: #171B2E;
-  --bg-elevated: #20264A;
-  --ink: #ECEEF8;
-  --ink-dim: #A4AAC8;
-  --amber: #6EC6E8;      /* "erledigt": Eisblau statt Bernstein */
-  --sage: #8E9CF2;       /* Hauptfarbe: Blauviolett */
+  --bg: #2E3033;         /* Anthrazit */
+  --bg-elevated: #44474B;
+  --ink: #ECECEC;
+  --ink-dim: #A9A9A9;
+  --amber: #7FB0DB;      /* "erledigt": helles Stahlblau */
+  --sage: #4682B4;       /* Hauptfarbe: Stahlblau */
   --danger: #D9808F;
-  --tint: 236, 238, 248;
-  --accent-rgb: 110, 198, 232;
-  --backdrop: rgba(6, 8, 20, 0.75);
+  --tint: 236, 236, 236;
+  --accent-rgb: 127, 176, 219;
+  --backdrop: rgba(10, 11, 13, 0.75);
 }
+/* Auf Stahlblau ist weiße Schrift besser lesbar als dunkle */
+:root[data-area="gym"] .btn.primary,
+:root[data-area="gym"] .seg button[aria-pressed="true"],
+:root[data-area="gym"] .chip[aria-pressed="true"],
+:root[data-area="gym"] .add-form button { color: #fff; }
 
 /* Farbschema von Schlaf: dunkles Weinrot mit warmen Akzenten in Orange und Gelb, angenehm für den Abend */
 :root[data-area="sleep"] {
@@ -50,6 +55,20 @@
   --tint: 247, 235, 227;
   --accent-rgb: 204, 139, 98;
   --backdrop: rgba(20, 6, 8, 0.78);
+}
+
+/* Farbschema des Planners: warmes Dunkelbraun mit Orange und Terrakotta */
+:root[data-area="planner"] {
+  --bg: #3B2A22;         /* dunkles Kaffeebraun, abgeleitet von #6E4A3C */
+  --bg-elevated: #553B2F;
+  --ink: #F9E8DA;        /* Creme */
+  --ink-dim: #CFB19E;
+  --amber: #FFB27A;      /* "erledigt": helles Orange */
+  --sage: #FFA05C;       /* Hauptfarbe: Orange */
+  --danger: #F0645C;
+  --tint: 249, 232, 218;
+  --accent-rgb: 255, 160, 92;
+  --backdrop: rgba(20, 11, 7, 0.78);
 }
 
 * { box-sizing: border-box; }
@@ -1212,3 +1231,65 @@ html, body { overscroll-behavior-y: contain; }
 .day.slip .dot { border-color: var(--danger) !important; background: transparent; position: relative; }
 .day.slip .dot::after { content: '×'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--danger); font-size: 15px; font-weight: 700; line-height: 1; }
 .cal-day.slip { background: color-mix(in srgb, var(--danger) 22%, transparent); border-color: var(--danger); color: var(--danger); font-weight: 600; }
+
+/* Notizen für die kommende Nacht: eingeklappt, bis man sie braucht */
+.draft-box { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 4px; text-align: left; }
+.draft-box > summary { list-style: none; cursor: pointer; padding: 10px 0; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; color: var(--ink-dim); }
+.draft-box > summary::-webkit-details-marker { display: none; }
+.draft-box > summary::after { content: '▾'; margin-left: auto; transition: transform .2s; }
+.draft-box[open] > summary::after { transform: rotate(180deg); }
+.draft-box[open] > summary { color: var(--ink); }
+.draft-opt { font-weight: 400; font-size: 12px; opacity: 0.8; }
+.sleeping .draft-box .chips { justify-content: flex-start; }
+
+
+/* ---- Planner ---- */
+.planner-tabs { margin-top: 18px; }
+.p-sec { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; color: var(--ink-dim); margin: 22px 0 8px; letter-spacing: .02em; }
+.p-sec small, .p-done summary small { font-weight: 500; opacity: .7; margin-left: 4px; }
+.p-sec.late { color: var(--danger); }
+.task-list { display: flex; flex-direction: column; gap: 4px; }
+.task-card { display: flex; align-items: center; gap: 9px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 10px; padding: 3px 8px 3px 6px; }
+.task-card .check-btn { width: 30px; height: 30px; }
+.task-card .check-btn svg { width: 15px; height: 15px; }
+.task-main { flex: 1; min-width: 0; background: none; border: none; color: inherit; text-align: left; padding: 3px 2px; cursor: pointer; font: inherit; display: flex; flex-direction: column; gap: 1px; }
+.task-title { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-card.done .task-title { color: var(--ink-dim); text-decoration: line-through; text-decoration-color: rgba(var(--tint), .35); }
+.task-meta { display: flex; flex-wrap: wrap; gap: 2px 9px; font-size: 11px; color: var(--ink-dim); align-items: center; }
+.tm { display: inline-flex; align-items: center; gap: 3px; }
+.tm.prio { color: var(--danger); font-weight: 700; }
+.tm.late { color: var(--danger); }
+.tm.now { color: var(--sage); font-weight: 600; }
+.tm.lbl { border: 1px solid var(--border); border-radius: 999px; padding: 0 7px; line-height: 16px; }
+.p-done { margin-top: 26px; }
+.p-done summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink-dim); padding: 6px 0 10px; list-style: none; }
+.p-done summary::-webkit-details-marker { display: none; }
+.p-done summary::after { content: ' ▾'; }
+.p-done[open] summary::after { content: ' ▴'; }
+
+.note-search { margin: 16px 0 10px; padding: 10px 14px; font-size: 15px; }
+.note-filter { margin-bottom: 12px; }
+.note-filter .chip { height: 32px; font-size: 13px; padding: 0 12px; }
+.note-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.note-card { display: flex; flex-direction: column; gap: 6px; text-align: left; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; color: inherit; font: inherit; cursor: pointer; width: 100%; }
+.note-top { display: flex; align-items: center; gap: 8px; }
+.note-title { flex: 1; min-width: 0; font-family: 'Fraunces', serif; font-size: 16px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-card .pin { color: var(--sage); display: flex; }
+.np { font-size: 13.5px; color: var(--ink-dim); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; }
+.nl { font-size: 13.5px; color: var(--ink-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nl.dim { opacity: .65; font-size: 12px; }
+
+.sub-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.sub-row .text-input { padding: 9px 12px; font-size: 15px; }
+.check-btn.small { width: 32px; height: 32px; }
+.check-btn.small svg { width: 16px; height: 16px; }
+.sub-row .icon-btn.small { margin: 0; flex-shrink: 0; font-size: 20px; }
+.new-label { display: inline-flex; gap: 6px; align-items: center; }
+.new-label .text-input { width: 130px; padding: 7px 12px; font-size: 14px; }
+.new-label .btn { padding: 8px 12px; }
+#tkDate { color-scheme: dark; }
+
+.lb-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.lb-row .text-input { padding: 9px 12px; font-size: 15px; }
+.lb-row small { color: var(--ink-dim); font-size: 12px; white-space: nowrap; min-width: 3.2em; text-align: right; }
+.lb-row .btn { padding: 8px 10px; flex-shrink: 0; }

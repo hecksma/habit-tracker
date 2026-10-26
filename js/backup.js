@@ -23,7 +23,8 @@ function exportData() {
     exportedAt: new Date().toISOString(),
     habits: habits,
     gym: gym,
-    sleep: sleep
+    sleep: sleep,
+    planner: planner
   };
   const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -37,7 +38,7 @@ function exportData() {
   settings.lastBackup = todayStr();
   saveSettings();
   updateBackupInfo();
-  setStatus('Sicherung gespeichert (' + habits.length + ' Gewohnheiten, ' + gym.workouts.length + ' Trainings, ' + sleep.nights.length + ' Nächte).', false);
+  setStatus('Sicherung gespeichert (' + habits.length + ' Gewohnheiten, ' + gym.workouts.length + ' Trainings, ' + sleep.nights.length + ' Nächte, ' + planner.tasks.length + ' Aufgaben, ' + planner.notes.length + ' Notizen).', false);
 }
 
 // Prüft, ob ein Eintrag aus einer Datei (oder dem Speicher) wie eine echte Gewohnheit aussieht.
@@ -75,7 +76,7 @@ async function importData(file) {
   try {
     const data = JSON.parse(await file.text());
     // 'wegmarken' akzeptieren wir weiter, damit ältere Sicherungen noch lesbar sind
-    if (!data || !['maximize', 'wegmarken'].includes(data.app) || (!Array.isArray(data.habits) && !data.gym && !data.sleep)) {
+    if (!data || !['maximize', 'wegmarken'].includes(data.app) || (!Array.isArray(data.habits) && !data.gym && !data.sleep && !data.planner)) {
       throw new Error('format');
     }
     const incomingHabits = Array.isArray(data.habits) ? data.habits : [];
@@ -128,8 +129,15 @@ async function importData(file) {
       if (saveSleep()) { sleepText = ' Schlaf: ' + added + ' Nächte neu.'; renderSleep(); }
       else { sleep = JSON.parse(before); sleepText = ' Schlafdaten konnten nicht gespeichert werden (Speicher voll).'; }
     }
+    let plannerText = '';
+    if (data.planner) {
+      const before = JSON.stringify(planner);
+      const res = mergePlanner(sanitizePlanner(data.planner));
+      if (savePlanner()) { plannerText = ' Planner: ' + res.tasks + ' Aufgaben und ' + res.notes + ' Notizen neu.'; renderPlanner(); }
+      else { planner = JSON.parse(before); plannerText = ' Planner-Daten konnten nicht gespeichert werden (Speicher voll).'; }
+    }
     setStatus('Wiederhergestellt: ' + added + ' Habits neu, ' + (valid.length - added) + ' zusammengeführt'
-      + (skipped ? ', ' + skipped + ' übersprungen' : '') + '.' + gymText + sleepText, false);
+      + (skipped ? ', ' + skipped + ' übersprungen' : '') + '.' + gymText + sleepText + plannerText, false);
   } catch (e) {
     setStatus('Diese Datei ist keine gültige Sicherung von Maximize.', true);
   }

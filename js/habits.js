@@ -370,10 +370,11 @@ contentEl.addEventListener('click', (e) => {
 });
 
 // Der Plus-Knopf öffnet die ausführliche Anlage (mit dem schon getippten Namen); Enter legt schnell nur den Namen an
-document.getElementById('addBtn').addEventListener('click', () => openSheet(null));
+document.getElementById('addBtn').addEventListener('click', () => { if (currentView === 'planner') plannerPlus(); else openSheet(null); });
 
 addForm.addEventListener('submit', function(e) {
   e.preventDefault();
+  if (currentView === 'planner') { plannerQuickAdd(); return; }
   const name = habitInput.value.trim();
   if (!name) return;
   habits.push({

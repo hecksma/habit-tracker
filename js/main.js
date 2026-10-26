@@ -42,6 +42,7 @@ loadSettings();
 loadGym();
 loadSleep();
 loadSleepActive();
+loadPlanner();
 loadActive();
 if (active) gymState.page = 'workout'; // läuft ein Training, geht es nach dem Öffnen dort weiter
 loadHabits();
@@ -64,6 +65,7 @@ window.addEventListener('storage', (e) => {
   else if (e.key === GYM_KEY) { loadGym(); renderGym(); }
   else if (e.key === ACTIVE_KEY) { loadActive(); renderGym(); }
   else if (e.key === SLEEP_KEY || e.key === SLEEP_ACTIVE_KEY) { loadSleep(); loadSleepActive(); if (currentView === 'sleep') renderSleep(); }
+  else if (e.key === PLANNER_KEY) { loadPlanner(); if (currentView === 'planner') renderPlanner(); }
   else if (e.key === SETTINGS_KEY) { loadSettings(); render(); }
 });
 

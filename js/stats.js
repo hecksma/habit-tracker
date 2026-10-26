@@ -15,7 +15,7 @@ const statsState = { period: 30, kind: 'do', openId: null, month: {} };
 
 // Die Eingabeleiste unten gibt es nur im Habit-Bereich und nur in der Tagesliste.
 function updateChrome() {
-  document.querySelector('.add-bar').hidden = !(currentView === 'habits' && habitsTab === 'today');
+  document.querySelector('.add-bar').hidden = !((currentView === 'habits' && habitsTab === 'today') || currentView === 'planner');
   if (typeof updateRestBar === 'function') updateRestBar();
   if (typeof updateGymNav === 'function') updateGymNav();
 }

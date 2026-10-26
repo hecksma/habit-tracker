@@ -4,14 +4,14 @@
 
 // Name des Zwischenspeichers. Bei einer neuen Veröffentlichung die Zahl erhöhen (v3, v4 ...),
 // dann wird beim nächsten Besuch ein neuer Speicher angelegt und der alte gelöscht.
-const CACHE = 'maximize-v22';
+const CACHE = 'maximize-v25';
 
 // Alle Dateien, die die App zum Starten braucht. Kommt eine neue Datei dazu, hier eintragen.
 const APP_FILES = [
   './', './index.html', './manifest.json', './icon-192.png', './icon-512.png',
   './css/style.css',
   './js/core.js', './js/habits.js', './js/settings.js', './js/stats.js',
-  './js/gym-data.js', './js/gym-records.js', './js/timepick.js', './js/sleep-data.js', './js/sleep-view.js', './js/gym-view.js', './js/gym-workout.js',
+  './js/gym-data.js', './js/gym-records.js', './js/timepick.js', './js/sleep-data.js', './js/sleep-view.js', './js/planner-data.js', './js/planner-view.js', './js/gym-view.js', './js/gym-workout.js',
   './js/backup.js', './js/nav.js', './js/main.js'
 ];
 

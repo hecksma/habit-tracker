@@ -14,7 +14,8 @@ const VIEW_KEY = 'maximize-view';
 const VIEWS = {
   habits: { title: 'Deine Gewohnheiten' },
   gym: { title: 'Gym' },
-  sleep: { title: 'Schlaf' }
+  sleep: { title: 'Schlaf' },
+  planner: { title: 'Planner' }
 };
 
 // Die Farbe der Statusleiste des Handys (meta theme-color) lässt sich nicht per CSS überblenden.
@@ -47,16 +48,19 @@ function setView(name) {
   subtitleEl.hidden = name !== 'habits';
   document.getElementById('gymSubtitle').hidden = name !== 'gym';
   document.getElementById('sleepSubtitle').hidden = name !== 'sleep';
+  document.getElementById('plannerSubtitle').hidden = name !== 'planner';
+  document.getElementById('labelsBtn').hidden = name !== 'planner';
   currentView = name;
   // Jeder Bereich hat sein eigenes Farbschema (siehe :root[data-area] in style.css)
   document.documentElement.dataset.area = name;
-  fadeThemeColor(name === 'gym' ? [23, 27, 46] : name === 'sleep' ? [30, 15, 17] : [28, 43, 39]);
+  fadeThemeColor(name === 'gym' ? [46, 48, 51] : name === 'sleep' ? [30, 15, 17] : name === 'planner' ? [59, 42, 34] : [28, 43, 39]);
   if (name !== 'gym' && typeof gymState !== 'undefined') gymState.page = 'home';
   if (name !== 'sleep' && typeof sleepState !== 'undefined') sleepState.page = 'main';
   if (typeof updateSleepNav === 'function') updateSleepNav();
   updateChrome();
   if (name === 'gym') renderGym();
   if (name === 'sleep') renderSleep();
+  if (name === 'planner') renderPlanner(); else if (typeof resetHabitChrome === 'function') resetHabitChrome();
   window.scrollTo(0, 0);
   try { localStorage.setItem(VIEW_KEY, name); } catch (e) { /* nicht kritisch */ }
 }
@@ -69,6 +73,7 @@ document.querySelector('.tabbar').addEventListener('click', (e) => {
   if (tab.dataset.view === 'gym') { gymState.page = 'home'; gymState.tab = 'train'; }
   if (tab.dataset.view === 'sleep') { sleepState.tab = 'night'; sleepState.page = 'main'; }
   if (tab.dataset.view === 'habits') setHabitsTab('today');
+  if (tab.dataset.view === 'planner') plannerState.tab = 'tasks';
   setView(tab.dataset.view);
 });
 
@@ -121,6 +126,9 @@ window.addEventListener('popstate', () => {
   }
   else if (currentView === 'gym' && gymState.tab === 'stats') {
     gymState.tab = 'train'; renderGym(); window.scrollTo(0, 0);
+  }
+  else if (currentView === 'planner' && plannerState.tab === 'notes') {
+    setPlannerTab('tasks'); window.scrollTo(0, 0);
   }
   // 3) vom Gym-Hauptbildschirm zu den Habits
   else if (currentView === 'sleep' && sleepState.page === 'notes') {
@@ -199,6 +207,9 @@ document.addEventListener('touchend', (e) => {
   } else if (currentView === 'sleep' && sleepState.page !== 'notes') {
     const want = next ? 'stats' : 'night';
     if (want !== sleepState.tab) { sleepState.tab = want; renderSleep(); window.scrollTo(0, 0); }
+  } else if (currentView === 'planner') {
+    const want = next ? 'notes' : 'tasks';
+    if (want !== plannerState.tab) { setPlannerTab(want); window.scrollTo(0, 0); }
   } else if (currentView === 'gym' && gymState.page === 'home') {
     const want = next ? 'stats' : 'train';
     if (want !== gymState.tab) { gymState.tab = want; renderGym(); window.scrollTo(0, 0); }

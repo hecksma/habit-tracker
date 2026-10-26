@@ -19,10 +19,10 @@ const DEFAULT_SICK = ['Schnupfen', 'Husten', 'Halsschmerzen', 'Fieber', 'Kopfsch
 const DT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-let sleep = { nights: [], tags: DEFAULT_TAGS.slice(), sickTags: DEFAULT_SICK.slice(), goalMin: 480, wakeByWeekday: ['07:00', '07:00', '07:00', '07:00', '07:00', '07:00', '07:00'] };
+let sleep = { nights: [], draft: null, tags: DEFAULT_TAGS.slice(), sickTags: DEFAULT_SICK.slice(), goalMin: 480, wakeByWeekday: ['07:00', '07:00', '07:00', '07:00', '07:00', '07:00', '07:00'] };
 let sleepActive = null;
 // Was gerade angezeigt wird (nur im Speicher der Seite)
-const sleepState = { page: 'main', tab: 'night', calMonth: null, calSel: null, openId: null, shown: 14, draftWake: null, askEdit: false, newTagFor: null, newTagKind: 'tag', sickOpen: null, asked: false };
+const sleepState = { page: 'main', tab: 'night', calMonth: null, calSel: null, openId: null, shown: 14, draftWake: null, askEdit: false, newTagFor: null, newTagKind: 'tag', sickOpen: null, draftOpen: false, asked: false };
 
 // Datum und Uhrzeit als Text ("2026-10-25T23:10") und zurück. Immer in deiner Ortszeit.
 function parseDT(s) { return new Date(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10), +s.slice(11, 13), +s.slice(14, 16)); }
@@ -32,7 +32,7 @@ function nightMinutes(n) { return Math.round((parseDT(n.wake) - parseDT(n.bed)) 
 function cleanTag(t) { return typeof t === 'string' ? t.trim().replace(/\s+/g, ' ').slice(0, 24) : ''; }
 
 function sanitizeSleep(raw) {
-  const out = { nights: [], tags: [], sickTags: [], goalMin: 480, wakeByWeekday: ['07:00', '07:00', '07:00', '07:00', '07:00', '07:00', '07:00'] };
+  const out = { nights: [], draft: null, tags: [], sickTags: [], goalMin: 480, wakeByWeekday: ['07:00', '07:00', '07:00', '07:00', '07:00', '07:00', '07:00'] };
   const src = (raw && typeof raw === 'object') ? raw : null;
   if (!src) { out.tags = DEFAULT_TAGS.slice(); out.sickTags = DEFAULT_SICK.slice(); return out; }
   const seen = new Set();
@@ -48,6 +48,12 @@ function sanitizeSleep(raw) {
   if (Number.isFinite(src.goalMin) && src.goalMin >= 240 && src.goalMin <= 720) out.goalMin = Math.round(src.goalMin / 15) * 15;
   if (Array.isArray(src.wakeByWeekday)) {
     for (let i = 0; i < 7; i++) if (typeof src.wakeByWeekday[i] === 'string' && TIME_RE.test(src.wakeByWeekday[i])) out.wakeByWeekday[i] = src.wakeByWeekday[i];
+  }
+  // Notizen für die kommende Nacht (schon vor dem Schlafen angehakt)
+  if (src.draft && typeof src.draft === 'object') {
+    const clean = (arr) => { const r = []; (Array.isArray(arr) ? arr : []).slice(0, 12).forEach(t => { const c = cleanTag(t); if (c && !r.includes(c)) r.push(c); }); return r; };
+    const dt = clean(src.draft.tags), ds = clean(src.draft.sick);
+    if (dt.length || ds.length) out.draft = { at: Number.isFinite(src.draft.at) ? src.draft.at : Date.now(), tags: dt, sick: ds };
   }
   const ids = new Set();
   (Array.isArray(src.nights) ? src.nights : []).slice(0, 20000).forEach(n => {

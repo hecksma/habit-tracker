@@ -16,7 +16,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" /></noscript>
 <!-- Aussehen der App -->
-<link rel="stylesheet" href="css/style.css?v=2.1.2" />
+<link rel="stylesheet" href="css/style.css?v=2.2.1" />
 </head>
 <body>
 
@@ -41,6 +41,13 @@
           <circle cx="8.5" cy="8.5" r="1.2"/>
         </svg>
       </button>
+      <!-- Nur im Planner sichtbar: Labels umbenennen und löschen -->
+      <button type="button" class="icon-btn" id="labelsBtn" aria-label="Labels verwalten" hidden>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8a1.5 1.5 0 0 1 0 2.1l-5.9 5.9a1.5 1.5 0 0 1-2.1 0z"/>
+          <circle cx="8.5" cy="8.5" r="1.2"/>
+        </svg>
+      </button>
       <button type="button" class="icon-btn" id="settingsBtn" aria-label="Einstellungen">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
           <path d="M4 7h9M17 7h3M4 17h3M11 17h9"/>
@@ -53,6 +60,7 @@
   <p class="subtitle" id="subtitle">Lege unten deine erste Gewohnheit an.</p>
   <p class="subtitle" id="gymSubtitle" hidden></p>
   <p class="subtitle" id="sleepSubtitle" hidden></p>
+  <p class="subtitle" id="plannerSubtitle" hidden></p>
 </header>
 
 <!-- Jeder Bereich der App ist ein eigener Abschnitt. Es ist immer nur einer sichtbar. -->
@@ -90,6 +98,16 @@
   <div id="sleepContent"></div>
 </section>
 
+<section id="view-planner" hidden>
+  <!-- Umschalter im Planner: Aufgaben oder Notizen -->
+  <div class="seg planner-tabs" role="group" aria-label="Ansicht">
+    <button type="button" data-ptab="tasks" aria-pressed="true">Aufgaben</button>
+    <button type="button" data-ptab="notes" aria-pressed="false">Notizen</button>
+  </div>
+
+  <div id="plannerContent"></div>
+</section>
+
 <div class="add-bar">
   <form class="add-form" id="addForm">
     <input type="text" id="habitInput" enterkeyhint="done" placeholder="Neue Gewohnheit, z. B. 'Lesen'" maxlength="40" autocomplete="off" aria-label="Name der neuen Gewohnheit" />
@@ -118,6 +136,10 @@
 </div>
 
 <nav class="tabbar" aria-label="Bereiche">
+  <button type="button" class="tab" data-view="planner">
+    <span class="tab-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 6.5l1.5 1.5 2.5-3M3.5 12.5l1.5 1.5 2.5-3M3.5 18.5l1.5 1.5 2.5-3M11 6.5h9.5M11 12.5h9.5M11 18.5h9.5"/></svg></span>
+    <span>Planner</span>
+  </button>
   <button type="button" class="tab" data-view="habits" aria-current="page">
     <span class="tab-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
     <span>Habits</span>
@@ -330,6 +352,110 @@
   </form>
 </dialog>
 
+<!-- Planner: Aufgabe anlegen oder bearbeiten -->
+<dialog id="taskSheet" aria-labelledby="tkHead">
+  <form id="tkForm">
+    <h2 id="tkHead" tabindex="-1" autofocus>Neue Aufgabe</h2>
+    <div class="field">
+      <label for="tkTitle">Titel</label>
+      <input type="text" id="tkTitle" class="text-input" maxlength="120" autocomplete="off" />
+    </div>
+    <div class="field">
+      <span class="label">Fällig</span>
+      <div class="chips wrap" id="tkDue"></div>
+      <input type="date" id="tkDate" class="text-input" style="margin-top:8px;" aria-label="Datum wählen" />
+    </div>
+    <div class="field">
+      <div class="chips wrap"><button type="button" class="chip" id="tkPrio" aria-pressed="false">! Wichtig</button></div>
+    </div>
+    <div class="field">
+      <span class="label" id="tkRepLabel">Wiederholen</span>
+      <div class="seg" id="tkRepeat" role="group" aria-labelledby="tkRepLabel">
+        <button type="button" data-rep="" aria-pressed="true">Nie</button>
+        <button type="button" data-rep="daily" aria-pressed="false">Täglich</button>
+        <button type="button" data-rep="days" aria-pressed="false">Tage</button>
+        <button type="button" data-rep="monthly" aria-pressed="false">Monat</button>
+      </div>
+      <div class="chips" id="tkDays" style="margin-top:8px;" hidden></div>
+      <p class="hint" id="tkRepHint" style="margin-top:8px;"></p>
+    </div>
+    <div class="field">
+      <span class="label">Label</span>
+      <div class="chips wrap" id="tkLabels"></div>
+    </div>
+    <div class="field">
+      <span class="label">Unteraufgaben</span>
+      <div id="tkSubs"></div>
+      <div class="start-row" style="justify-content:flex-start;"><button type="button" class="tool-btn" id="tkAddSub">+ Unteraufgabe</button></div>
+    </div>
+    <div class="field">
+      <label for="tkNote">Notiz</label>
+      <textarea id="tkNote" class="text-input" rows="3" maxlength="2000" style="resize:vertical;"></textarea>
+    </div>
+    <p class="sheet-msg" id="tkMsg" role="alert"></p>
+    <div class="sheet-actions">
+      <button type="button" class="btn danger" id="tkDelete">Löschen</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="tkCancel">Abbrechen</button>
+      <button type="submit" class="btn primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Planner: Notiz anlegen oder bearbeiten -->
+<dialog id="noteSheet" aria-labelledby="ntHead">
+  <form id="ntForm">
+    <h2 id="ntHead" tabindex="-1" autofocus>Neue Notiz</h2>
+    <div class="field">
+      <label for="ntTitle">Titel</label>
+      <input type="text" id="ntTitle" class="text-input" maxlength="80" autocomplete="off" />
+    </div>
+    <div class="field" id="ntTextField">
+      <label for="ntText">Text</label>
+      <textarea id="ntText" class="text-input" rows="7" maxlength="10000" style="resize:vertical;"></textarea>
+    </div>
+    <div class="field" id="ntItemsField" hidden>
+      <span class="label">Einträge</span>
+      <div id="ntItems"></div>
+      <div class="start-row" style="justify-content:flex-start;">
+        <button type="button" class="tool-btn" id="ntAddItem">+ Eintrag</button>
+        <button type="button" class="tool-btn" id="ntClearDone">Erledigte entfernen</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="chips wrap">
+        <button type="button" class="chip" id="ntList" aria-pressed="false">Checkliste</button>
+        <button type="button" class="chip" id="ntPin" aria-pressed="false">Anheften</button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="label">Label</span>
+      <div class="chips wrap" id="ntLabels"></div>
+    </div>
+    <p class="sheet-msg" id="ntMsg" role="alert"></p>
+    <div class="sheet-actions">
+      <button type="button" class="btn danger" id="ntDelete">Löschen</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="ntCancel">Abbrechen</button>
+      <button type="submit" class="btn primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Planner: Labels verwalten -->
+<dialog id="labelSheet" aria-labelledby="lbHead">
+  <form id="lbForm" method="dialog">
+    <h2 id="lbHead" tabindex="-1" autofocus>Labels</h2>
+    <div id="lbList"></div>
+    <div class="sub-row" style="margin-top:6px;">
+      <input type="text" id="lbNew" class="text-input" maxlength="20" placeholder="Neues Label" autocomplete="off" aria-label="Neues Label" />
+      <button type="button" class="btn primary" id="lbAdd">Hinzufügen</button>
+    </div>
+    <p class="sheet-msg" id="lbMsg" role="alert"></p>
+    <div class="sheet-actions"><span class="spacer"></span><button type="submit" class="btn primary">Fertig</button></div>
+  </form>
+</dialog>
+
 <dialog id="amountSheet" aria-labelledby="amountTitle">
   <form id="amountForm">
     <h2 id="amountTitle" tabindex="-1">Menge</h2>
@@ -498,20 +624,22 @@
 </dialog>
 
 <!-- Die Skripte laufen der Reihe nach. Jedes hat einen Bereich der App, siehe README.md -->
-<script src="js/core.js?v=2.1.2"></script>
-<script src="js/habits.js?v=2.1.2"></script>
-<script src="js/settings.js?v=2.1.2"></script>
-<script src="js/stats.js?v=2.1.2"></script>
-<script src="js/gym-data.js?v=2.1.2"></script>
-<script src="js/gym-records.js?v=2.1.2"></script>
-<script src="js/timepick.js?v=2.1.2"></script>
-<script src="js/sleep-data.js?v=2.1.2"></script>
-<script src="js/gym-view.js?v=2.1.2"></script>
-<script src="js/gym-workout.js?v=2.1.2"></script>
-<script src="js/sleep-view.js?v=2.1.2"></script>
-<script src="js/backup.js?v=2.1.2"></script>
-<script src="js/nav.js?v=2.1.2"></script>
-<script src="js/main.js?v=2.1.2"></script>
+<script src="js/core.js?v=2.2.1"></script>
+<script src="js/habits.js?v=2.2.1"></script>
+<script src="js/settings.js?v=2.2.1"></script>
+<script src="js/stats.js?v=2.2.1"></script>
+<script src="js/gym-data.js?v=2.2.1"></script>
+<script src="js/gym-records.js?v=2.2.1"></script>
+<script src="js/timepick.js?v=2.2.1"></script>
+<script src="js/sleep-data.js?v=2.2.1"></script>
+<script src="js/gym-view.js?v=2.2.1"></script>
+<script src="js/gym-workout.js?v=2.2.1"></script>
+<script src="js/sleep-view.js?v=2.2.1"></script>
+<script src="js/planner-data.js?v=2.2.1"></script>
+<script src="js/planner-view.js?v=2.2.1"></script>
+<script src="js/backup.js?v=2.2.1"></script>
+<script src="js/nav.js?v=2.2.1"></script>
+<script src="js/main.js?v=2.2.1"></script>
 
 </body>
 </html>
