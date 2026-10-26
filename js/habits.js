@@ -138,7 +138,7 @@ function isDueToday(h, today) {
 function planText(h, today) {
   const sched = getSchedule(h);
   if (sched.type === 'weekly') {
-    return countThisWeek(h, today) + ' von ' + sched.times + ' diese Woche';
+    return countThisWeek(h, today) + '/' + sched.times;
   }
   if (sched.days.length === 7) return 'Täglich';
   return sched.days.map(i => DAY_LABELS[i]).join(' ');
@@ -173,6 +173,35 @@ function saveHabits() {
 // 4) Anzeige
 // ======================================================================
 
+// Haken-Symbol im Stil der übrigen Symbole (Linie, abgerundete Enden)
+const CHECK_SVG = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.2 13.2l2.8 2.8L18.2 7.8"/></svg>';
+
+// Warnung für Gewohnheiten mit "X mal pro Woche": Wird es eng, sagt eine kleine Markierung Bescheid.
+//  - 'must': Es bleiben genau so viele Tage wie nötige Einheiten, ab jetzt zählt jeder Tag
+//  - 'today': Heute ist der letzte Tag, an dem es noch klappt
+//  - 'lost': Das Wochenziel ist nicht mehr zu schaffen
+// Ist heute schon erledigt, zählen nur die Tage danach.
+function weekWarning(h, today) {
+  const sched = getSchedule(h);
+  if (sched.type !== 'weekly') return null;
+  const needed = sched.times - countThisWeek(h, today);
+  if (needed <= 0) return null;
+  const t = parseDate(today);
+  const doneToday = (h.completions || []).includes(today);
+  const left = 7 - weekdayIdx(t) - (doneToday ? 1 : 0); // übrige Tage, an denen noch etwas zählen kann
+  if (needed > left) return { kind: 'lost', text: 'Ziel verfehlt', tip: 'Das Wochenziel ist nicht mehr zu schaffen' };
+  if (needed < left) return null;
+  if (left === 1) return { kind: 'today', text: doneToday ? 'Morgen nötig' : 'Heute nötig', tip: 'Heute ist der letzte Tag, an dem das Wochenziel noch klappt' };
+  return { kind: 'must', text: 'Jeden Tag nötig', tip: 'Für das Wochenziel zählt ab jetzt jeder Tag' };
+}
+function warnTag(h, today) {
+  const w = weekWarning(h, today);
+  if (!w) return '';
+  // Dringend: nur ein Ausrufezeichen (ein Tipp erklärt es). "Ziel verfehlt" bleibt als kurzer Text.
+  const inner = w.kind === 'lost' ? '<span class="warn-ex" aria-hidden="true">!</span>' + w.text : '<span class="warn-ex" aria-hidden="true">!</span>';
+  return '<button type="button" class="warn-tag ' + w.kind + '" data-action="warn-info" data-tip="' + escapeHtml(w.text + ': ' + w.tip) + '" aria-label="' + escapeHtml(w.text + '. ' + w.tip) + '">' + inner + '</button>';
+}
+
 function renderCard(h, today) {
   const done = new Set(h.completions || []);
   const sched = getSchedule(h);
@@ -203,17 +232,16 @@ function renderCard(h, today) {
   // Name einmal maskieren und überall verwenden
   const safeName = escapeHtml(h.name);
   const kind = kindOf(h);
-  const kindTag = kind === 'avoid' ? '<span class="kind-tag">Vermeiden</span>' : '';
   if (kind === 'amount') return renderAmountCard(h, today, streak, unitText, cells, safeName);
 
   return '<div class="habit-card ' + (isDone ? 'done' : '') + '">'
     + '<div class="habit-top">'
     +   '<button type="button" class="check-btn ' + (isDone ? 'done' : '') + '" data-action="toggle-day" data-id="' + h.id + '" data-date="' + today + '"'
-    +     ' aria-label="' + safeName + (kind === 'avoid' ? (isDone ? ' heute: durchgehalten, zurücknehmen' : ' heute durchgehalten') : ' heute ' + (isDone ? 'zurücknehmen' : 'erledigen')) + '">' + (isDone ? '✓' : '') + '</button>'
+    +     ' aria-label="' + safeName + (kind === 'avoid' ? (isDone ? ' heute: durchgehalten, zurücknehmen' : ' heute durchgehalten') : ' heute ' + (isDone ? 'zurücknehmen' : 'erledigen')) + '">' + CHECK_SVG + '</button>'
     +   '<div class="habit-info">'
-    +     '<p class="habit-name">' + safeName + '</p>'
+    +     '<div class="name-row"><p class="habit-name">' + safeName + '</p>' + warnTag(h, today) + '</div>'
     +     '<div class="meta"><span class="streak"><span class="streak-num">' + streak.value + '</span> ' + unitText + '</span>'
-    +       '<span class="plan">' + planText(h, today) + '</span>' + kindTag
+    +       '<span class="plan">' + planText(h, today) + '</span>'
     +       (streak.jokerUsed ? '<span class="joker">Joker genutzt</span>' : '') + '</div>'
     +   '</div>'
     +   '<button type="button" class="edit-btn" data-action="edit" data-id="' + h.id + '" aria-label="' + safeName + ' bearbeiten">⋯</button>'
@@ -229,9 +257,9 @@ function renderAmountCard(h, today, streak, unitText, cells, safeName) {
   const isDone = v >= a.target - 1e-9;
   return '<div class="habit-card amount ' + (isDone ? 'done' : '') + '">'
     + '<div class="habit-top">'
-    +   '<span class="amount-ring" style="--p:' + pct + '" aria-hidden="true"><span>' + (isDone ? '✓' : pct + '%') + '</span></span>'
+    +   '<span class="amount-ring" style="--p:' + pct + '" aria-hidden="true"><span>' + (isDone ? CHECK_SVG : pct + '%') + '</span></span>'
     +   '<div class="habit-info">'
-    +     '<p class="habit-name">' + safeName + '</p>'
+    +     '<div class="name-row"><p class="habit-name">' + safeName + '</p>' + warnTag(h, today) + '</div>'
     +     '<div class="meta"><span class="streak"><span class="streak-num">' + streak.value + '</span> ' + unitText + '</span>'
     +       '<span class="plan">' + planText(h, today) + '</span>'
     +       (streak.jokerUsed ? '<span class="joker">Joker genutzt</span>' : '') + '</div>'
@@ -300,6 +328,7 @@ contentEl.addEventListener('click', (e) => {
   const action = btn.dataset.action;
   if (action === 'toggle-day') toggleDay(btn.dataset.id, btn.dataset.date);
   if (action === 'edit') openSheet(btn.dataset.id);
+  if (action === 'warn-info') showToast('<b>' + escapeHtml(btn.dataset.tip) + '</b>', 3500);
   if (action === 'amt-add') {
     const hb = habits.find(x => x.id === btn.dataset.id);
     if (!hb) return;
