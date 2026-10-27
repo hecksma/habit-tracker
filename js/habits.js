@@ -41,8 +41,68 @@ function getAmount(h) {
   return { target, step, unit };
 }
 const doneCache = new WeakMap();
+// Automatische Gewohnheiten (h.auto): Der Tag wird aus den Daten von Gym oder Schlaf abgehakt.
+//   { src: 'gym', routineId: null | id, minMin: 0 }  → ein abgeschlossenes Training an dem Tag
+//   { src: 'sleep', before: '00:00' }                 → "Gute Nacht" spätestens zu dieser Uhrzeit am Abend dieses Tages
+// Dazu zählen weiterhin die von Hand abgehakten Tage (completions).
+let autoVer = 0; // wird bei jedem Speichern von Gym- oder Schlafdaten erhöht, damit die Zwischenspeicher neu rechnen
+function autoOf(h) {
+  const a = h && h.auto;
+  if (!a || typeof a !== 'object') return null;
+  if (a.src === 'gym') {
+    const m = Number.isFinite(a.minMin) ? Math.max(0, Math.min(300, Math.round(a.minMin))) : 0;
+    return { src: 'gym', routineId: typeof a.routineId === 'string' && a.routineId ? a.routineId : null, minMin: m };
+  }
+  if (a.src === 'sleep') return { src: 'sleep', before: typeof a.before === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(a.before) ? a.before : '00:00' };
+  return null;
+}
+function autoText(h) {
+  const a = autoOf(h);
+  if (!a) return '';
+  if (a.src === 'sleep') return 'vor ' + a.before;
+  const r = a.routineId && typeof gym !== 'undefined' ? gym.routines.find(x => x.id === a.routineId) : null;
+  return (r ? r.name : 'Gym') + (a.minMin ? ' ≥' + a.minMin : '');
+}
+// Minuten seit Mittag: so liegen 23:30 und 00:30 nebeneinander
+const sinceNoon = (hh, mm) => (hh * 60 + mm - 720 + 1440) % 1440;
+const autoCache = new WeakMap();
+function autoDays(h) {
+  const a = autoOf(h);
+  const out = new Set();
+  if (!a) return out;
+  const nW = typeof gym !== 'undefined' ? gym.workouts.length : 0;
+  const nN = typeof sleep !== 'undefined' ? sleep.nights.length : 0;
+  const sig = autoVer + '|' + JSON.stringify(a) + '|' + nW + '|' + nN + '|' + (typeof sleepActive !== 'undefined' && sleepActive ? sleepActive.bed : '');
+  const c = autoCache.get(h);
+  if (c && c.sig === sig) return c.set;
+  if (a.src === 'gym' && typeof gym !== 'undefined') {
+    gym.workouts.forEach(w => {
+      if (a.routineId && w.routineId !== a.routineId) return;
+      if (a.minMin && (w.durationSec || 0) < a.minMin * 60) return;
+      out.add(w.date.slice(0, 10));
+    });
+  } else if (a.src === 'sleep' && typeof sleep !== 'undefined') {
+    const limit = sinceNoon(+a.before.slice(0, 2), +a.before.slice(3, 5));
+    const best = {}; // Datum des Abends → früheste Einschlafzeit
+    const add = (d) => {
+      const evening = d.getHours() < 12 ? addDays(d, -1) : d; // nach Mitternacht gehört zum Abend davor
+      const k = fmt(evening), m = sinceNoon(d.getHours(), d.getMinutes());
+      if (!(k in best) || m < best[k]) best[k] = m;
+    };
+    sleep.nights.forEach(n => { if (typeof n.bed === 'string' && n.bed.length >= 16) add(new Date(n.bed.slice(0, 10) + 'T' + n.bed.slice(11, 16) + ':00')); });
+    if (typeof sleepActive !== 'undefined' && sleepActive && sleepActive.bed) add(new Date(sleepActive.bed));
+    Object.keys(best).forEach(k => { if (best[k] <= limit) out.add(k); });
+  }
+  autoCache.set(h, { sig, set: out });
+  return out;
+}
+
 function doneSet(h) {
-  if (kindOf(h) !== 'avoid') return new Set(h.completions || []);
+  if (kindOf(h) !== 'avoid') {
+    const s = new Set(h.completions || []);
+    if (h.auto) autoDays(h).forEach(d => s.add(d));
+    return s;
+  }
   const today = todayStr(), slips = Array.isArray(h.slips) ? h.slips : [];
   const first = firstDay(h);
   const sig = today + '|' + first + '|' + slips.join(',');
@@ -192,6 +252,7 @@ function saveHabits() {
 
 // Haken-Symbol im Stil der übrigen Symbole (Linie, abgerundete Enden)
 const X_SVG = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 8l8 8M16 8l-8 8"/></svg>';
+const AUTO_SVG = '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" aria-hidden="true"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg>';
 const CHECK_SVG = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.2 13.2l2.8 2.8L18.2 7.8"/></svg>';
 
 // Warnung für Gewohnheiten mit "X mal pro Woche": Wird es eng, sagt eine kleine Markierung Bescheid.
@@ -264,6 +325,7 @@ function renderCard(h, today) {
     +     '<div class="name-row"><p class="habit-name">' + safeName + '</p>' + warnTag(h, today) + '</div>'
     +     '<div class="meta"><span class="streak"><span class="streak-num">' + streak.value + '</span> ' + unitText + '</span>'
     +       '<span class="plan">' + planText(h, today) + '</span>'
+    +       (autoOf(h) ? '<span class="auto-tag">' + AUTO_SVG + escapeHtml(autoText(h)) + '</span>' : '')
     +       (streak.jokerUsed ? '<span class="joker">Joker genutzt</span>' : '') + '</div>'
     +   '</div>'
     +   '<button type="button" class="edit-btn" data-action="edit" data-id="' + h.id + '" aria-label="' + safeName + ' bearbeiten">⋯</button>'
@@ -342,6 +404,10 @@ function toggleDay(id, date) {
     render(); saveHabits();
     return;
   }
+  if (autoOf(habit) && autoDays(habit).has(date)) {
+    showToast('Wird automatisch erkannt (' + (autoOf(habit).src === 'gym' ? 'Gym' : 'Schlaf') + ')', 2200);
+    return;
+  }
   habit.completions = habit.completions || [];
   const idx = habit.completions.indexOf(date);
   if (idx >= 0) habit.completions.splice(idx, 1);
@@ -402,6 +468,7 @@ const deleteBtn = document.getElementById('deleteBtn');
 const amtTarget = document.getElementById('amtTarget');
 const amtUnit = document.getElementById('amtUnit');
 const amtStep = document.getElementById('amtStep');
+const autoBefore = document.getElementById('autoBefore');
 function parseAmountNum(t) { const n = Number(String(t).trim().replace(',', '.')); return Number.isFinite(n) ? n : NaN; }
 let sheet = null; // Zwischenstand, solange das Fenster offen ist
 
@@ -440,8 +507,10 @@ function openSheet(id) {
     mode: s.type,
     days: new Set(s.type === 'days' ? s.days : ALL_DAYS),
     times: s.type === 'weekly' ? s.times : 3,
-    kind: kindOf(h),
+    kind: autoOf(h) ? 'auto' : kindOf(h),
+    auto: Object.assign({ src: 'gym', routineId: null, minMin: 0, before: '00:00' }, autoOf(h) || {}),
   };
+  autoBefore.value = sheet.auto.before;
   const am = getAmount(h);
   amtTarget.value = h.amount ? numFmt.format(am.target) : '';
   amtUnit.value = h.amount ? am.unit : '';
@@ -460,7 +529,11 @@ function renderSheet() {
   document.querySelectorAll('#planSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === sheet.mode)));
   document.querySelectorAll('#kindSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.kind === sheet.kind)));
   document.getElementById('amountPane').hidden = sheet.kind !== 'amount';
-  document.getElementById('kindHint').textContent = sheet.kind === 'avoid'
+  document.getElementById('autoPane').hidden = sheet.kind !== 'auto';
+  if (sheet.kind === 'auto') renderAutoPane();
+  document.getElementById('kindHint').textContent = sheet.kind === 'auto'
+    ? 'Wird aus den Daten von Gym oder Schlaf von selbst abgehakt.'
+    : sheet.kind === 'avoid'
     ? 'Jeder Tag zählt von selbst als geschafft. Du trägst nur Rückfälle ein (✕).'
     : sheet.kind === 'amount'
       ? 'Du zählst über den Tag eine Menge hoch. Mit Erreichen des Ziels gilt der Tag als geschafft.'
@@ -478,6 +551,49 @@ function renderSheet() {
     : 'Die Serie zählt Wochen, in denen du dein Ziel erreichst. Welche Tage du wählst, ist egal.';
 }
 
+// Vorschlag für den Namen, solange du keinen eigenen eingegeben hast
+const AUTO_NAME_RE = /^(Trainieren|Vor \d\d:\d\d schlafen)$/;
+function autoDefaultName() { return sheet.auto.src === 'gym' ? 'Trainieren' : 'Vor ' + sheet.auto.before + ' schlafen'; }
+function suggestAutoName() {
+  if (sheet.kind !== 'auto') return;
+  const cur = sheetName.value.trim();
+  if (!cur || AUTO_NAME_RE.test(cur)) sheetName.value = autoDefaultName();
+}
+
+function renderAutoPane() {
+  const a = sheet.auto, gymSrc = a.src === 'gym';
+  document.querySelectorAll('#autoSrc button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.src === a.src)));
+  document.getElementById('autoGym').hidden = !gymSrc;
+  document.getElementById('autoSleep').hidden = gymSrc;
+  if (gymSrc) {
+    document.getElementById('autoRoutines').innerHTML = '<button type="button" class="chip" data-r="" aria-pressed="' + !a.routineId + '">Jedes Training</button>'
+      + gym.routines.map(r => '<button type="button" class="chip" data-r="' + r.id + '" aria-pressed="' + (a.routineId === r.id) + '">' + escapeHtml(r.name) + '</button>').join('');
+    document.getElementById('autoMinValue').textContent = a.minMin ? a.minMin : 'egal';
+    document.getElementById('autoMinMinus').disabled = a.minMin <= 0;
+    document.getElementById('autoMinPlus').disabled = a.minMin >= 180;
+  }
+  document.getElementById('autoHint').textContent = gymSrc
+    ? 'Sobald du im Gym-Bereich ein Training abschließt, ist der Tag abgehakt. Hast du woanders trainiert, kannst du den Tag von Hand abhaken.'
+    : 'Zählt, wenn du am Abend spätestens um ' + a.before + ' auf „Gute Nacht“ drückst. Die gewählten Tage sind die Abende, an denen es gelten soll (z. B. Mo bis Do für die Nächte unter der Woche).';
+}
+document.getElementById('autoSrc').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-src]');
+  if (!b || !sheet) return;
+  sheet.auto.src = b.dataset.src;
+  suggestAutoName(); renderSheet();
+});
+document.getElementById('autoRoutines').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-r]');
+  if (!b || !sheet) return;
+  sheet.auto.routineId = b.dataset.r || null; renderSheet();
+});
+document.getElementById('autoMinMinus').addEventListener('click', () => { if (sheet) { sheet.auto.minMin = Math.max(0, sheet.auto.minMin - 10); renderSheet(); } });
+document.getElementById('autoMinPlus').addEventListener('click', () => { if (sheet) { sheet.auto.minMin = Math.min(180, sheet.auto.minMin + 10); renderSheet(); } });
+autoBefore.addEventListener('change', () => {
+  if (!sheet || !/^\d\d:\d\d$/.test(autoBefore.value)) return;
+  sheet.auto.before = autoBefore.value; suggestAutoName(); renderSheet();
+});
+
 function closeSheet() {
   sheet = null;
   if (sheetEl.open) sheetEl.close();
@@ -488,6 +604,7 @@ document.getElementById('kindSeg').addEventListener('click', (e) => {
   if (!b || !sheet) return;
   sheet.kind = b.dataset.kind;
   sheetMsg.textContent = '';
+  suggestAutoName();
   renderSheet();
 });
 document.getElementById('amtPresets').addEventListener('click', (e) => {
@@ -547,7 +664,12 @@ sheetForm.addEventListener('submit', (e) => {
     amount = { target, step, unit };
   }
   h.name = name;
-  h.kind = sheet.kind;
+  h.kind = sheet.kind === 'auto' ? 'do' : sheet.kind;
+  if (sheet.kind === 'auto') {
+    h.auto = sheet.auto.src === 'gym'
+      ? { src: 'gym', routineId: sheet.auto.routineId, minMin: sheet.auto.minMin }
+      : { src: 'sleep', before: sheet.auto.before };
+  } else delete h.auto;
   if (sheet.kind === 'avoid' && !Array.isArray(h.slips)) h.slips = [];
   if (amount) {
     h.amount = amount;

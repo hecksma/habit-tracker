@@ -19,6 +19,7 @@ js/sleep-data.js    Schlaf: Datenmodell, Prüfung, Zusammenführen
 js/sleep-view.js    Schlaf: Gute-Nacht-Ablauf, Morgenfrage, Notizen/Symptome, Statistik
 js/planner-data.js  Planner: Daten (Aufgaben, Notizen, Labels, Wiederholungen)
 js/planner-view.js  Planner: Anzeige, Aufgaben- und Notiz-Fenster, Checklisten, Suche
+js/secret.js        Planner: Geheimbereich (geheimes Zeichen, PIN, Sperre)
 js/gym-view.js      Gym: Startseite, Übungsseiten, Verlauf
 js/gym-workout.js   Gym: laufendes Training, Pausen-Timer, Routinen-Editor
 js/backup.js        Datensicherung (Export und Import als JSON)
@@ -61,7 +62,7 @@ auf IndexedDB umstellen, ohne den Rest zu ändern.
 
 Versionsnummer (X.Y.Z): Die erste Zahl steigt nur bei einem Meilenstein, zum Beispiel einem neuen Bereich
 (gemeinsam entschieden). Die mittlere Zahl steigt mit dem Arbeitstag: Am ersten Tag ist es 1.1.x, am nächsten
-Arbeitstag 1.2.x usw. (1.4.x = Sonntag, 25.10.2026; 2.0 = Meilenstein Schlaf; 2.1.x = Montag, 26.10.2026; 2.2.0 = neuer Bereich Planner). Die letzte Zahl zählt die Veröffentlichungen innerhalb des Tages.
+Arbeitstag 1.2.x usw. (1.4.x = Sonntag, 25.10.2026; 2.0 = Meilenstein Schlaf; 2.1.x = Montag, 26.10.2026; 2.2.0 = neuer Bereich Planner; 2.3.0 = automatische Habits aus Gym und Schlaf; 2.4.0 = Geheimbereich im Planner). Die letzte Zahl zählt die Veröffentlichungen innerhalb des Tages.
 
 1. `APP_VERSION` in `js/core.js`, `CACHE` in `sw.js` und `?v=` an den Dateien in `index.html` erhöhen.
 2. In GitHub Desktop: Commit, Push. Nach ca. einer Minute ist die neue Version unter GitHub Pages erreichbar.

@@ -20,7 +20,7 @@ const VIEWS = {
 
 // Die Farbe der Statusleiste des Handys (meta theme-color) lässt sich nicht per CSS überblenden.
 // Deshalb rechnen wir die Zwischenfarben selbst aus, passend zur Dauer in style.css (0,4 s).
-let themeNow = [28, 43, 39], themeAnim = 0, themeFirst = true;
+let themeNow = [35, 38, 23], themeAnim = 0, themeFirst = true;
 function fadeThemeColor(to) {
   const tc = document.getElementById('themeColor');
   if (!tc) return;
@@ -53,7 +53,8 @@ function setView(name) {
   currentView = name;
   // Jeder Bereich hat sein eigenes Farbschema (siehe :root[data-area] in style.css)
   document.documentElement.dataset.area = name;
-  fadeThemeColor(name === 'gym' ? [46, 48, 51] : name === 'sleep' ? [30, 15, 17] : name === 'planner' ? [59, 42, 34] : [28, 43, 39]);
+  fadeThemeColor(name === 'gym' ? [39, 40, 42] : name === 'sleep' ? [26, 13, 10] : name === 'planner' ? [48, 39, 28] : [35, 38, 23]);
+  if (name !== 'planner' && typeof lockSecret === 'function') lockSecret();
   if (name !== 'gym' && typeof gymState !== 'undefined') gymState.page = 'home';
   if (name !== 'sleep' && typeof sleepState !== 'undefined') sleepState.page = 'main';
   if (typeof updateSleepNav === 'function') updateSleepNav();
@@ -126,6 +127,9 @@ window.addEventListener('popstate', () => {
   }
   else if (currentView === 'gym' && gymState.tab === 'stats') {
     gymState.tab = 'train'; renderGym(); window.scrollTo(0, 0);
+  }
+  else if (currentView === 'planner' && plannerState.tab === 'secret') {
+    lockSecret(); window.scrollTo(0, 0);
   }
   else if (currentView === 'planner' && plannerState.tab === 'notes') {
     setPlannerTab('tasks'); window.scrollTo(0, 0);
@@ -207,7 +211,7 @@ document.addEventListener('touchend', (e) => {
   } else if (currentView === 'sleep' && sleepState.page !== 'notes') {
     const want = next ? 'stats' : 'night';
     if (want !== sleepState.tab) { sleepState.tab = want; renderSleep(); window.scrollTo(0, 0); }
-  } else if (currentView === 'planner') {
+  } else if (currentView === 'planner' && plannerState.tab !== 'secret') {
     const want = next ? 'notes' : 'tasks';
     if (want !== plannerState.tab) { setPlannerTab(want); window.scrollTo(0, 0); }
   } else if (currentView === 'gym' && gymState.page === 'home') {

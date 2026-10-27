@@ -93,10 +93,12 @@ function loadSleep() {
   if (raw && typeof raw === 'object' && Array.isArray(raw.nights) && raw.nights.length !== sleep.nights.length) quarantine(SLEEP_KEY);
 }
 function saveSleep() {
+  autoVer++;
   try { localStorage.setItem(SLEEP_KEY, JSON.stringify(sleep)); return true; } catch (e) { return false; }
 }
 function loadSleepActive() { sleepActive = sanitizeSleepActive(readJson(SLEEP_ACTIVE_KEY)); }
 function saveSleepActive() {
+  autoVer++;
   try {
     if (sleepActive) localStorage.setItem(SLEEP_ACTIVE_KEY, JSON.stringify(sleepActive));
     else localStorage.removeItem(SLEEP_ACTIVE_KEY);

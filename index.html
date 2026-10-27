@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Maximize</title>
 <!-- Farbe der Statusleiste auf dem Handy, passend zum Hintergrund -->
-<meta name="theme-color" id="themeColor" content="#1C2B27" />
+<meta name="theme-color" id="themeColor" content="#232617" />
 <!-- Verweis auf die manifest.json: Sie sagt Android, wie die App heißt und aussieht, wenn sie installiert wird -->
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" href="icon-192.png" />
@@ -16,7 +16,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" /></noscript>
 <!-- Aussehen der App -->
-<link rel="stylesheet" href="css/style.css?v=2.2.1" />
+<link rel="stylesheet" href="css/style.css?v=2.4.1" />
 </head>
 <body>
 
@@ -172,8 +172,32 @@
         <button type="button" data-kind="do" aria-pressed="true">Tun</button>
         <button type="button" data-kind="avoid" aria-pressed="false">Vermeiden</button>
         <button type="button" data-kind="amount" aria-pressed="false">Menge</button>
+        <button type="button" data-kind="auto" aria-pressed="false">Auto</button>
       </div>
       <p class="hint" id="kindHint" style="margin:8px 0 0;"></p>
+    </div>
+
+    <div class="field" id="autoPane" hidden>
+      <div class="seg" id="autoSrc" role="group" aria-label="Quelle" style="margin-bottom:14px;">
+        <button type="button" data-src="gym" aria-pressed="true">Training</button>
+        <button type="button" data-src="sleep" aria-pressed="false">Schlaf</button>
+      </div>
+      <div id="autoGym">
+        <span class="label">Welches Training zählt?</span>
+        <div class="chips wrap" id="autoRoutines" style="margin-bottom:14px;"></div>
+        <span class="label">Mindestdauer</span>
+        <div class="stepper">
+          <button type="button" id="autoMinMinus" aria-label="Weniger">−</button>
+          <span class="value" id="autoMinValue" aria-live="polite" style="min-width:3.2ch;">egal</span>
+          <button type="button" id="autoMinPlus" aria-label="Mehr">+</button>
+          <span style="color: var(--ink-dim); font-size: 14px;">Min</span>
+        </div>
+      </div>
+      <div id="autoSleep" hidden>
+        <span class="label">Spätestens ins Bett um</span>
+        <input type="text" readonly id="autoBefore" class="time-input tp" data-tp="time" data-title="Spätestens ins Bett um" aria-label="Spätestens ins Bett um" />
+      </div>
+      <p class="hint" id="autoHint"></p>
     </div>
 
     <div class="field" id="amountPane" hidden>
@@ -428,7 +452,7 @@
         <button type="button" class="chip" id="ntPin" aria-pressed="false">Anheften</button>
       </div>
     </div>
-    <div class="field">
+    <div class="field" id="ntLabelField">
       <span class="label">Label</span>
       <div class="chips wrap" id="ntLabels"></div>
     </div>
@@ -453,6 +477,39 @@
     </div>
     <p class="sheet-msg" id="lbMsg" role="alert"></p>
     <div class="sheet-actions"><span class="spacer"></span><button type="submit" class="btn primary">Fertig</button></div>
+  </form>
+</dialog>
+
+<!-- Planner: Geheimbereich einrichten -->
+<dialog id="secretSheet" aria-labelledby="secTitle">
+  <h2 id="secTitle" tabindex="-1" autofocus>Dein geheimes Zeichen</h2>
+  <div id="secDraw">
+    <p class="hint" id="secHint" style="margin:0 0 12px;"></p>
+    <canvas id="secPad" class="sec-pad" aria-label="Zeichenfläche für dein geheimes Zeichen"></canvas>
+    <div class="sec-dots" id="secDots" aria-hidden="true"></div>
+    <div class="sheet-actions">
+      <button type="button" class="btn" id="secRestart">Neu beginnen</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="secCancel">Abbrechen</button>
+    </div>
+  </div>
+  <div id="secPin" hidden>
+    <form id="secPinForm">
+      <p class="hint" style="margin:0 0 12px;">Mit der PIN kommst du in den Geheimbereich, falls das Zeichnen einmal nicht klappt. In den Einstellungen die Zeile mit der Version lange gedrückt halten.</p>
+      <div class="field"><label for="secPin1">PIN (4 bis 8 Ziffern)</label><input type="password" id="secPin1" class="text-input" inputmode="numeric" maxlength="8" autocomplete="off" /></div>
+      <div class="field"><label for="secPin2">PIN wiederholen</label><input type="password" id="secPin2" class="text-input" inputmode="numeric" maxlength="8" autocomplete="off" /></div>
+      <div class="sheet-actions"><span class="spacer"></span><button type="button" class="btn" id="secCancel2">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
+    </form>
+  </div>
+  <p class="sheet-msg" id="secMsg" role="alert"></p>
+</dialog>
+
+<dialog id="pinSheet" aria-labelledby="pinTitle">
+  <form id="pinForm">
+    <h2 id="pinTitle" tabindex="-1" autofocus>PIN</h2>
+    <input type="password" id="pinInput" class="text-input" inputmode="numeric" maxlength="8" autocomplete="off" aria-label="PIN" />
+    <p class="sheet-msg" id="pinMsg" role="alert"></p>
+    <div class="sheet-actions"><span class="spacer"></span><button type="button" class="btn" id="pinCancel">Abbrechen</button><button type="submit" class="btn primary">OK</button></div>
   </form>
 </dialog>
 
@@ -611,6 +668,19 @@
     </div>
   </details>
 
+  <div class="setting" id="secretSettings" data-area="planner" hidden>
+    <span class="setting-title">Geheimbereich</span>
+    <span class="setting-desc" id="secDesc">Notizen, die nur mit deinem geheimen Zeichen erscheinen. Sie tauchen in keiner Liste und keiner Suche auf.</span>
+    <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
+      <button type="button" class="tool-btn" id="secSetupBtn">Einrichten</button>
+      <span id="secManage" hidden style="display:contents;">
+        <button type="button" class="tool-btn" id="secRedraw">Zeichen neu festlegen</button>
+        <button type="button" class="tool-btn" id="secChangePin">PIN ändern</button>
+        <button type="button" class="tool-btn" id="secOff">Auflösen</button>
+      </span>
+    </div>
+  </div>
+
   <p class="hint" id="appVersion" style="text-align:center;margin:14px 0 4px;"></p>
   <div style="text-align:center;margin-bottom:6px;">
     <button type="button" class="tool-btn" id="checkUpdate">Nach Update suchen</button>
@@ -624,22 +694,23 @@
 </dialog>
 
 <!-- Die Skripte laufen der Reihe nach. Jedes hat einen Bereich der App, siehe README.md -->
-<script src="js/core.js?v=2.2.1"></script>
-<script src="js/habits.js?v=2.2.1"></script>
-<script src="js/settings.js?v=2.2.1"></script>
-<script src="js/stats.js?v=2.2.1"></script>
-<script src="js/gym-data.js?v=2.2.1"></script>
-<script src="js/gym-records.js?v=2.2.1"></script>
-<script src="js/timepick.js?v=2.2.1"></script>
-<script src="js/sleep-data.js?v=2.2.1"></script>
-<script src="js/gym-view.js?v=2.2.1"></script>
-<script src="js/gym-workout.js?v=2.2.1"></script>
-<script src="js/sleep-view.js?v=2.2.1"></script>
-<script src="js/planner-data.js?v=2.2.1"></script>
-<script src="js/planner-view.js?v=2.2.1"></script>
-<script src="js/backup.js?v=2.2.1"></script>
-<script src="js/nav.js?v=2.2.1"></script>
-<script src="js/main.js?v=2.2.1"></script>
+<script src="js/core.js?v=2.4.1"></script>
+<script src="js/habits.js?v=2.4.1"></script>
+<script src="js/settings.js?v=2.4.1"></script>
+<script src="js/stats.js?v=2.4.1"></script>
+<script src="js/gym-data.js?v=2.4.1"></script>
+<script src="js/gym-records.js?v=2.4.1"></script>
+<script src="js/timepick.js?v=2.4.1"></script>
+<script src="js/sleep-data.js?v=2.4.1"></script>
+<script src="js/gym-view.js?v=2.4.1"></script>
+<script src="js/gym-workout.js?v=2.4.1"></script>
+<script src="js/sleep-view.js?v=2.4.1"></script>
+<script src="js/planner-data.js?v=2.4.1"></script>
+<script src="js/planner-view.js?v=2.4.1"></script>
+<script src="js/secret.js?v=2.4.1"></script>
+<script src="js/backup.js?v=2.4.1"></script>
+<script src="js/nav.js?v=2.4.1"></script>
+<script src="js/main.js?v=2.4.1"></script>
 
 </body>
 </html>

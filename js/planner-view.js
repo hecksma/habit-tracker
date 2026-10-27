@@ -54,7 +54,7 @@ function updatePlannerSubtitle() {
   const g = groupTasks();
   const open = g.overdue.length + g.today.length + g.soon.length + g.later.length + g.none.length;
   const now = g.overdue.length + g.today.length;
-  el.textContent = !planner.tasks.length ? 'Aufgaben und Notizen' : !open ? 'Alles erledigt' : open + ' offen' + (now ? ' · ' + now + ' heute' : '');
+  el.textContent = plannerState.tab === 'secret' ? 'Geheimbereich' : !planner.tasks.length ? 'Aufgaben und Notizen' : !open ? 'Alles erledigt' : open + ' offen' + (now ? ' · ' + now + ' heute' : '');
 }
 
 // ---- Aufgaben ----
@@ -83,9 +83,9 @@ function renderTasksHtml() {
   const open = g.overdue.length + g.today.length + g.soon.length + g.later.length + g.none.length;
   let h = '';
   if (!planner.tasks.length) {
-    h = '<div class="empty-state"><span class="big">Noch keine Aufgaben</span>Schreibe unten eine Aufgabe und tippe auf Enter. Mit dem Plus legst du sie mit Datum, Wiederholung und Unteraufgaben an.</div>';
+    h = '<div class="empty-state"><div class="big">Noch keine Aufgaben</div>Schreibe unten eine Aufgabe und tippe auf Enter. Mit dem Plus legst du sie mit Datum, Wiederholung und Unteraufgaben an.</div>';
   } else {
-    if (!open) h += '<div class="empty-state" style="margin-top:20px;"><span class="big">Alles erledigt</span>Keine offenen Aufgaben.</div>';
+    if (!open) h += '<div class="empty-state" style="margin-top:20px;"><div class="big">Alles erledigt</div>Keine offenen Aufgaben.</div>';
     h += sec('Überfällig', g.overdue, 'late') + sec('Heute', g.today) + sec('Demnächst', g.soon) + sec('Später', g.later) + sec('Ohne Datum', g.none);
     if (g.done.length) {
       h += '<details class="p-done" id="doneBox"' + (plannerState.doneOpen ? ' open' : '') + '><summary>Erledigt <small>' + g.done.length + '</small></summary>'
@@ -100,6 +100,7 @@ function renderTasksHtml() {
 // ---- Notizen ----
 
 function noteMatches(n) {
+  if (n.secret) return false;
   if (plannerState.filter && n.label !== plannerState.filter) return false;
   const q = plannerState.q.trim().toLowerCase();
   if (!q) return true;
@@ -126,13 +127,13 @@ function noteCardHtml(n) {
 
 function noteListHtml() {
   const list = planner.notes.filter(noteMatches).sort((a, b) => (b.pinned - a.pinned) || (b.updated - a.updated));
-  if (!planner.notes.length) return '<div class="empty-state"><span class="big">Noch keine Notizen</span>Für Ideen, Gedanken und Listen. Schreibe unten einen Titel und tippe auf Enter, oder nutze das Plus für Text, Checkliste und Label.</div>';
+  if (!planner.notes.some(n => !n.secret)) return '<div class="empty-state"><div class="big">Noch keine Notizen</div>Für Ideen, Gedanken und Listen. Schreibe unten einen Titel und tippe auf Enter, oder nutze das Plus für Text, Checkliste und Label.</div>';
   if (!list.length) return '<p class="hint" style="text-align:center;margin-top:24px;">Keine Notiz gefunden.</p>';
   return '<div class="note-list">' + list.map(noteCardHtml).join('') + '</div>';
 }
 
 function renderNotesHtml() {
-  const labels = planner.labels.filter(l => planner.notes.some(n => n.label === l));
+  const labels = planner.labels.filter(l => planner.notes.some(n => n.label === l && !n.secret));
   if (plannerState.filter && !labels.includes(plannerState.filter)) plannerState.filter = '';
   return '<input type="search" id="noteSearch" class="text-input note-search" placeholder="Suchen" maxlength="60" autocomplete="off" value="' + escapeHtml(plannerState.q) + '" aria-label="Notizen durchsuchen" />'
     + (labels.length ? '<div class="chips wrap note-filter">' + labels.map(l => '<button type="button" class="chip" data-act="n-filter" data-l="' + escapeHtml(l) + '" aria-pressed="' + (plannerState.filter === l) + '">' + escapeHtml(l) + '</button>').join('') + '</div>' : '')
@@ -143,7 +144,8 @@ function renderNotesHtml() {
 
 function renderPlanner() {
   document.querySelectorAll('.planner-tabs button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.ptab === plannerState.tab)));
-  plannerEl.innerHTML = plannerState.tab === 'tasks' ? renderTasksHtml() : renderNotesHtml();
+  document.querySelector('.planner-tabs').hidden = plannerState.tab === 'secret';
+  plannerEl.innerHTML = plannerState.tab === 'tasks' ? renderTasksHtml() : plannerState.tab === 'secret' ? renderSecretHtml() : renderNotesHtml();
   updatePlannerSubtitle();
   updatePlannerChrome();
 }
@@ -151,7 +153,8 @@ function renderPlanner() {
 // Eingabeleiste unten: gehört im Planner zur gerade gezeigten Ansicht
 function updatePlannerChrome() {
   if (currentView !== 'planner') return;
-  const tasks = plannerState.tab === 'tasks';
+  const tasks = plannerState.tab === 'tasks', secret = plannerState.tab === 'secret';
+  if (secret) { habitInput.placeholder = 'Neue geheime Notiz'; habitInput.setAttribute('aria-label', 'Titel der neuen geheimen Notiz'); habitInput.maxLength = 80; return; }
   habitInput.placeholder = tasks ? 'Neue Aufgabe, z. B. \'Paket abholen\'' : 'Neue Notiz, z. B. \'Idee: …\'';
   habitInput.setAttribute('aria-label', tasks ? 'Titel der neuen Aufgabe' : 'Titel der neuen Notiz');
   habitInput.maxLength = tasks ? 120 : 80;
@@ -182,7 +185,7 @@ function plannerQuickAdd() {
   if (plannerState.tab === 'tasks') {
     planner.tasks.push({ id: newId(), title, note: '', due: null, prio: 0, label: '', subs: [], repeat: null, done: null, created: todayStr() });
   } else {
-    planner.notes.unshift({ id: newId(), title, text: '', items: null, label: '', pinned: false, created: Date.now(), updated: Date.now() });
+    planner.notes.unshift({ id: newId(), title, text: '', items: null, label: '', pinned: false, secret: plannerState.tab === 'secret', created: Date.now(), updated: Date.now() });
   }
   habitInput.value = '';
   savePlanner();
@@ -377,8 +380,9 @@ let nt = null;
 function openNoteSheet(id) {
   const n = id ? planner.notes.find(x => x.id === id) : null;
   if (id && !n) return;
-  nt = n ? JSON.parse(JSON.stringify(n)) : { id: null, title: habitInput.value.trim().slice(0, 80), text: '', items: null, label: '', pinned: false, newLabel: false };
+  nt = n ? JSON.parse(JSON.stringify(n)) : { id: null, title: habitInput.value.trim().slice(0, 80), text: '', items: null, label: '', pinned: false, newLabel: false, secret: plannerState.tab === 'secret' };
   nt.isNew = !n;
+  document.getElementById('ntLabelField').hidden = !!nt.secret;
   document.getElementById('ntHead').textContent = n ? 'Notiz bearbeiten' : 'Neue Notiz';
   document.getElementById('ntTitle').value = nt.title;
   document.getElementById('ntText').value = nt.text;
@@ -458,7 +462,7 @@ document.getElementById('ntForm').addEventListener('submit', (e) => {
   const items = nt.items ? nt.items.filter(s => s.t.trim()).map(s => ({ id: s.id, t: s.t.trim(), done: s.done })) : null;
   if (!title && !text.trim() && !(items && items.length)) { document.getElementById('ntMsg').textContent = 'Schreibe etwas hinein oder gib einen Titel ein.'; return; }
   const now = Date.now();
-  const n = { id: nt.id || newId(), title, text, items, label: nt.label, pinned: nt.pinned, created: nt.created || now, updated: now };
+  const n = { id: nt.id || newId(), title, text, items, label: nt.secret ? '' : nt.label, pinned: nt.pinned, secret: !!nt.secret, created: nt.created || now, updated: now };
   const i = planner.notes.findIndex(x => x.id === n.id);
   if (i >= 0) { n.created = planner.notes[i].created; planner.notes[i] = n; } else planner.notes.unshift(n);
   if (n.label && !planner.labels.includes(n.label)) planner.labels.push(n.label);

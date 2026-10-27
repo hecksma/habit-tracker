@@ -55,6 +55,8 @@ function isValidHabit(h) {
 // Übernimmt Art, Mengenziel und Tagesmengen aus einer Sicherung und prüft sie dabei
 function cleanHabitExtras(src) {
   const out = { kind: kindOf(src) };
+  const au = autoOf(src);
+  if (au) out.auto = au;
   if (out.kind === 'amount') {
     const a = getAmount(src);
     out.amount = { target: a.target, step: a.step, unit: a.unit };

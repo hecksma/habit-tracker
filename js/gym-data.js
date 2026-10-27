@@ -211,6 +211,7 @@ function loadGym() {
 }
 
 function saveGym() {
+  autoVer++;
   try { localStorage.setItem(GYM_KEY, JSON.stringify(gym)); return true; }
   catch (e) { return false; }
 }

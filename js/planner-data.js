@@ -39,6 +39,17 @@ function sanitizeRepeat(r) {
   return null;
 }
 
+// Geheimes Zeichen: gespeicherte Zeichnungen (je 64 Punkte), Toleranz und PIN (nur als Hash)
+function sanitizeSecret(sc) {
+  if (!sc || typeof sc !== 'object' || !Array.isArray(sc.templates)) return null;
+  const templates = sc.templates.slice(0, 5).filter(t => Array.isArray(t) && t.length === 64
+    && t.every(p => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]) && p[0] > -1 && p[0] < 2 && p[1] > -1 && p[1] < 2));
+  if (!templates.length) return null;
+  const out = { templates, thr: Number.isFinite(sc.thr) ? Math.max(0.1, Math.min(0.3, sc.thr)) : 0.16 };
+  if (sc.pin && typeof sc.pin.salt === 'string' && /^[0-9a-f]{8,64}$/.test(sc.pin.salt) && typeof sc.pin.hash === 'string' && /^[0-9a-f]{8,64}$/.test(sc.pin.hash)) out.pin = { salt: sc.pin.salt, hash: sc.pin.hash };
+  return out;
+}
+
 function sanitizePlanner(raw) {
   const out = { tasks: [], notes: [], labels: [] };
   if (!raw || typeof raw !== 'object') return out;
@@ -77,11 +88,14 @@ function sanitizePlanner(raw) {
       id, title, text, items,
       label: addLabel(cleanStr(n.label, 20)),
       pinned: !!n.pinned,
+      secret: !!n.secret,
       created: Number.isFinite(n.created) ? n.created : Date.now(),
       updated: Number.isFinite(n.updated) ? n.updated : Date.now()
     });
   });
   out.labels = Array.from(labels);
+  const sc = sanitizeSecret(raw.secret);
+  if (sc) out.secret = sc;
   // Erledigte Aufgaben, die älter als ein halbes Jahr sind, räumen wir auf
   const limit = fmt(addDays(new Date(), -183));
   out.tasks = out.tasks.filter(t => !t.done || t.done >= limit);
@@ -140,5 +154,6 @@ function mergePlanner(incoming) {
   incoming.tasks.forEach(t => { if (!have.has(t.id)) { planner.tasks.push(t); have.add(t.id); tasks++; } });
   incoming.notes.forEach(n => { if (!have.has(n.id)) { planner.notes.push(n); have.add(n.id); notes++; } });
   incoming.labels.forEach(l => { if (!planner.labels.includes(l)) planner.labels.push(l); });
+  if (!planner.secret && incoming.secret) planner.secret = incoming.secret;
   return { tasks, notes };
 }
