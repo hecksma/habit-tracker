@@ -48,22 +48,14 @@ function normalizeStroke(pts) {
   return r.map(p => [(p[0] - x0) / w, (p[1] - y0) / h]);
 }
 function strokeDist(a, b) { let d = 0; for (let i = 0; i < a.length; i++) d += Math.hypot(a[i][0] - b[i][0], a[i][1] - b[i][1]); return d / a.length; }
-// Kleinster Abstand zu einer Vorlage, egal ob rückwärts gezeichnet oder an anderer Stelle begonnen (bei geschlossenen Formen wie dem Herz)
-function bestDist(n, t) {
-  let best = Infinity;
-  const rev = t.slice().reverse();
-  const closed = Math.hypot(t[0][0] - t[t.length - 1][0], t[0][1] - t[t.length - 1][1]) < 0.4;
-  for (const base of [t, rev]) {
-    best = Math.min(best, strokeDist(n, base));
-    if (closed) for (let k = 2; k < base.length; k += 2) best = Math.min(best, strokeDist(n, base.slice(k).concat(base.slice(0, k))));
-  }
-  return best;
-}
+// Abstand zu einer Vorlage; nur vorwärts oder rückwärts gezeichnet, kein verschobener Startpunkt (sonst passen zu viele Formen)
+function bestDist(n, t) { return Math.min(strokeDist(n, t), strokeDist(n, t.slice().reverse())); }
+const SEC_MAX_THR = 0.12;
 function matchesSecret(pts) {
   if (!secretConfigured()) return false;
   const n = normalizeStroke(pts);
   if (!n) return false;
-  return planner.secret.templates.some(t => bestDist(n, t) <= planner.secret.thr);
+  return planner.secret.templates.some(t => bestDist(n, t) <= Math.min(planner.secret.thr, SEC_MAX_THR));
 }
 
 // ---- Zeichnen erfassen (Kopfbereich und Zeichenfläche im Einrichten-Fenster) ----
@@ -259,8 +251,8 @@ captureStrokes(secPad, {
     // Drei Zeichnungen müssen einander ähnlich genug sein
     const ds = [strokeDist(sec.samples[0], sec.samples[1]), strokeDist(sec.samples[0], sec.samples[2]), strokeDist(sec.samples[1], sec.samples[2])];
     const worst = Math.max(...ds);
-    if (worst > 0.2) { sec.samples = []; msg.textContent = 'Die drei Zeichnungen waren zu verschieden. Versuche es noch einmal, möglichst gleich.'; drawSecretSheet(); return; }
-    sec.thr = Math.max(0.13, Math.min(0.22, worst * 1.5 + 0.03));
+    if (worst > 0.14) { sec.samples = []; msg.textContent = 'Die drei Zeichnungen waren zu verschieden. Versuche es noch einmal, möglichst gleich.'; drawSecretSheet(); return; }
+    sec.thr = Math.max(0.08, Math.min(SEC_MAX_THR, worst * 1.3 + 0.02));
     if (sec.mode === 'redraw') { saveSecret(sec.samples, sec.thr, planner.secret && planner.secret.pin); finishSecretSetup('Neues Zeichen gespeichert.'); }
     else { sec.step = 'pin'; drawSecretSheet(); }
   }
