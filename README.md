@@ -72,3 +72,13 @@ Arbeitstag 1.2.x usw. (1.4.x = Sonntag, 25.10.2026; 2.0 = Meilenstein Schlaf; 2.
 
 Das Repository ist öffentlich. Keine persönlichen Daten einchecken (zum Beispiel Sicherungsdateien
 oder Trainings-CSV).
+
+### 2.5.0
+- Notizen öffnen im Vollbild-Editor (Titel, großer Textbereich, Checkliste, Anheften, Label); Zurück speichert automatisch.
+- Geheim-PIN hat genau 3 Ziffern (alte PIN über Geheimbereich-Einstellungen → PIN ändern neu setzen).
+- Herz-Erkennung toleranter (Startpunkt, Richtung, kleinere Zeichnungen).
+
+### 2.6.0
+- Notiz-Editor mit Formatierung: Überschrift, fett, kursiv, unterstrichen, durchgestrichen, Aufzählung (gespeichert als bereinigtes HTML im Feld `html`, `text` bleibt Klartext für die Suche).
+- Checklisten-Einträge per Griff verschiebbar.
+- Editor-Leiste neu geordnet: Anheften, Checkliste, Löschen oben, Formatierung und Labels unten.

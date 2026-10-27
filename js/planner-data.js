@@ -16,6 +16,34 @@ const P_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const cleanStr = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
+// Formatierter Notiztext: nur wenige harmlose Tags bleiben, alles andere (auch Attribute) fliegt raus
+const RICH_MAP = { b: 'b', strong: 'b', i: 'i', em: 'i', u: 'u', s: 's', strike: 's', del: 's', h1: 'h2', h2: 'h2', h3: 'h2', ul: 'ul', ol: 'ul', li: 'li', br: 'br', div: 'div', p: 'div' };
+function cleanHtml(str) {
+  if (typeof str !== 'string' || !str) return '';
+  let doc;
+  try { doc = new DOMParser().parseFromString('<body>' + str.slice(0, 60000) + '</body>', 'text/html'); } catch (e) { return ''; }
+  const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const walk = (node) => {
+    let out = '';
+    node.childNodes.forEach(c => {
+      if (c.nodeType === 3) out += esc(c.nodeValue);
+      else if (c.nodeType === 1) {
+        const tag = RICH_MAP[c.tagName.toLowerCase()];
+        if (c.tagName.toLowerCase() === 'script' || c.tagName.toLowerCase() === 'style') return;
+        if (tag === 'br') out += '<br>';
+        else if (tag) out += '<' + tag + '>' + walk(c) + '</' + tag + '>';
+        else out += walk(c);
+      }
+    });
+    return out;
+  };
+  const r = walk(doc.body);
+  return r.length > 30000 ? '' : r;
+}
+function textToHtml(t) {
+  return String(t || '').split('\n').map(l => '<div>' + (l ? l.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : '<br>') + '</div>').join('');
+}
+
 function sanitizeSubs(list, max) {
   const out = [], seen = new Set();
   (Array.isArray(list) ? list : []).forEach(s => {
@@ -86,6 +114,7 @@ function sanitizePlanner(raw) {
     ids.add(id);
     out.notes.push({
       id, title, text, items,
+      html: items ? '' : cleanHtml(n.html),
       label: addLabel(cleanStr(n.label, 20)),
       pinned: !!n.pinned,
       secret: !!n.secret,

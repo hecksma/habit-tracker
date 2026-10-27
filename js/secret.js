@@ -38,21 +38,32 @@ function resamplePath(pts, n) {
 }
 // Ergebnis: 64 Punkte in einem Einheitsquadrat, oder null, wenn die Spur zu kurz oder zu flach ist
 function normalizeStroke(pts) {
-  if (!pts || pts.length < 8 || pathLen(pts) < 80) return null;
+  if (!pts || pts.length < 8 || pathLen(pts) < 60) return null;
   const r = resamplePath(pts, SEC_N);
   if (!r) return null;
   const xs = r.map(p => p[0]), ys = r.map(p => p[1]);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
   const w = x1 - x0, h = y1 - y0;
-  if (w < 40 || h < 40 || w / h > 3 || h / w > 3) return null;
+  if (w < 28 || h < 28 || w / h > 3 || h / w > 3) return null;
   return r.map(p => [(p[0] - x0) / w, (p[1] - y0) / h]);
 }
 function strokeDist(a, b) { let d = 0; for (let i = 0; i < a.length; i++) d += Math.hypot(a[i][0] - b[i][0], a[i][1] - b[i][1]); return d / a.length; }
+// Kleinster Abstand zu einer Vorlage, egal ob rückwärts gezeichnet oder an anderer Stelle begonnen (bei geschlossenen Formen wie dem Herz)
+function bestDist(n, t) {
+  let best = Infinity;
+  const rev = t.slice().reverse();
+  const closed = Math.hypot(t[0][0] - t[t.length - 1][0], t[0][1] - t[t.length - 1][1]) < 0.4;
+  for (const base of [t, rev]) {
+    best = Math.min(best, strokeDist(n, base));
+    if (closed) for (let k = 2; k < base.length; k += 2) best = Math.min(best, strokeDist(n, base.slice(k).concat(base.slice(0, k))));
+  }
+  return best;
+}
 function matchesSecret(pts) {
   if (!secretConfigured()) return false;
   const n = normalizeStroke(pts);
   if (!n) return false;
-  return planner.secret.templates.some(t => strokeDist(n, t) <= planner.secret.thr);
+  return planner.secret.templates.some(t => bestDist(n, t) <= planner.secret.thr);
 }
 
 // ---- Zeichnen erfassen (Kopfbereich und Zeichenfläche im Einrichten-Fenster) ----
@@ -270,7 +281,7 @@ function finishSecretSetup(text) {
 document.getElementById('secPinForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const a = document.getElementById('secPin1').value, b = document.getElementById('secPin2').value, msg = document.getElementById('secMsg');
-  if (!/^\d{4,8}$/.test(a)) { msg.textContent = 'Die PIN braucht 4 bis 8 Ziffern.'; return; }
+  if (!/^\d{3}$/.test(a)) { msg.textContent = 'Die PIN braucht genau 3 Ziffern.'; return; }
   if (a !== b) { msg.textContent = 'Die beiden PINs sind verschieden.'; return; }
   const salt = newSalt(), pin = { salt, hash: await hashPin(salt, a) };
   if (sec.mode === 'pin') { planner.secret.pin = pin; savePlanner(); finishSecretSetup('PIN geändert.'); }

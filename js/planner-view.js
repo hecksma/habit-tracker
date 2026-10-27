@@ -377,18 +377,21 @@ document.getElementById('tkDelete').addEventListener('click', function () {
 const noteSheet = document.getElementById('noteSheet');
 let nt = null;
 
+const ntRich = document.getElementById('ntRich');
+try { document.execCommand('defaultParagraphSeparator', false, 'div'); } catch (e) { /* nicht kritisch */ }
+
 function openNoteSheet(id) {
   const n = id ? planner.notes.find(x => x.id === id) : null;
   if (id && !n) return;
-  nt = n ? JSON.parse(JSON.stringify(n)) : { id: null, title: habitInput.value.trim().slice(0, 80), text: '', items: null, label: '', pinned: false, newLabel: false, secret: plannerState.tab === 'secret' };
+  nt = n ? JSON.parse(JSON.stringify(n)) : { id: null, title: habitInput.value.trim().slice(0, 80), text: '', html: '', items: null, label: '', pinned: false, newLabel: false, secret: plannerState.tab === 'secret' };
   nt.isNew = !n;
   document.getElementById('ntLabelField').hidden = !!nt.secret;
   document.getElementById('ntHead').textContent = n ? 'Notiz bearbeiten' : 'Neue Notiz';
   document.getElementById('ntTitle').value = nt.title;
-  document.getElementById('ntText').value = nt.text;
+  ntRich.innerHTML = nt.html || textToHtml(nt.text).replace(/^<div><br><\/div>$/, '');
   document.getElementById('ntMsg').textContent = '';
   document.getElementById('ntDelete').hidden = !n;
-  disarm(document.getElementById('ntDelete'));
+  document.getElementById('ntDelete').classList.remove('confirm'); document.getElementById('ntDelete').dataset.arm = '';
   drawNoteSheet();
   noteSheet.showModal();
 }
@@ -398,9 +401,11 @@ function drawNoteSheet() {
   document.getElementById('ntList').setAttribute('aria-pressed', String(!!nt.items));
   document.getElementById('ntTextField').hidden = !!nt.items;
   document.getElementById('ntItemsField').hidden = !nt.items;
+  document.getElementById('ntFmt').hidden = !!nt.items;
   if (nt.items) {
     document.getElementById('ntItems').innerHTML = nt.items.map((s, i) =>
-      '<div class="sub-row"><button type="button" class="check-btn small' + (s.done ? ' done' : '') + '" data-nt="it-check" data-i="' + i + '" aria-label="Abhaken">' + CHECK_SVG + '</button>'
+      '<div class="sub-row" data-i="' + i + '"><span class="grip" aria-label="Zum Sortieren ziehen" role="img">' + GRIP_ICON + '</span>'
+      + '<button type="button" class="check-btn small' + (s.done ? ' done' : '') + '" data-nt="it-check" data-i="' + i + '" aria-label="Abhaken">' + CHECK_SVG + '</button>'
       + '<input type="text" class="text-input" data-nt="it-text" data-i="' + i + '" maxlength="100" value="' + escapeHtml(s.t) + '" aria-label="Eintrag" />'
       + '<button type="button" class="icon-btn small" data-nt="it-del" data-i="' + i + '" aria-label="Eintrag entfernen">×</button></div>').join('');
     document.getElementById('ntClearDone').hidden = !nt.items.some(s => s.done);
@@ -423,6 +428,16 @@ noteSheet.addEventListener('click', (e) => {
 noteSheet.addEventListener('input', (e) => {
   if (e.target.dataset.nt === 'it-text') nt.items[e.target.dataset.i].t = e.target.value;
 });
+// Checkliste: Einträge am Griff ziehen
+document.getElementById('ntItems').addEventListener('pointerdown', (e) => {
+  const grip = e.target.closest('.grip');
+  if (!grip || !nt || !nt.items) return;
+  e.preventDefault();
+  startDrag(grip.closest('.sub-row'), document.getElementById('ntItems'), '.sub-row', (order) => {
+    nt.items = order.map(i => nt.items[i]);
+    drawNoteSheet();
+  });
+});
 function addNoteItem() {
   if (!nt.items || nt.items.length >= 300) return;
   nt.items.push({ id: newId(), t: '', done: false });
@@ -437,15 +452,55 @@ noteSheet.addEventListener('keydown', (e) => {
   if (e.target.id === 'ntNewLabel') { addNewLabel(nt, 'nt'); drawNoteSheet(); }
   else if (e.target.dataset.nt === 'it-text') addNoteItem();
 });
+// Enter im Titel springt in den Text
+document.getElementById('ntTitle').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); (nt && nt.items ? document.getElementById('ntAddItem') : ntRich).focus(); } });
 document.getElementById('ntPin').addEventListener('click', () => { nt.pinned = !nt.pinned; drawNoteSheet(); });
+
+// ---- Formatieren ----
+const fmtBtns = Array.from(document.querySelectorAll('#ntFmt [data-fmt]'));
+function updateFmtState() {
+  if (!noteSheet.open || !nt || nt.items) return;
+  const sel = document.getSelection();
+  if (!sel.rangeCount || !ntRich.contains(sel.anchorNode)) { fmtBtns.forEach(b => b.setAttribute('aria-pressed', 'false')); return; }
+  fmtBtns.forEach(b => {
+    const f = b.dataset.fmt; let on = false;
+    try { on = f === 'h' ? /^h[1-6]$/i.test(document.queryCommandValue('formatBlock')) : document.queryCommandState(f); } catch (err) { /* egal */ }
+    b.setAttribute('aria-pressed', String(!!on));
+  });
+}
+document.addEventListener('selectionchange', updateFmtState);
+// pointerdown darf den Fokus nicht aus dem Text nehmen, sonst verschwindet die Tastatur
+document.getElementById('ntFmt').addEventListener('pointerdown', (e) => { if (e.target.closest('button')) e.preventDefault(); });
+document.getElementById('ntFmt').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-fmt]');
+  if (!b) return;
+  ntRich.focus();
+  const f = b.dataset.fmt;
+  if (f === 'h') document.execCommand('formatBlock', false, /^h[1-6]$/i.test(document.queryCommandValue('formatBlock')) ? 'div' : 'h2');
+  else document.execCommand(f, false, null);
+  updateFmtState();
+});
+// Einfügen immer als reiner Text, damit nichts Fremdes in die Notiz kommt
+ntRich.addEventListener('paste', (e) => {
+  e.preventDefault();
+  const t = (e.clipboardData || window.clipboardData).getData('text/plain');
+  document.execCommand('insertText', false, t);
+});
+ntRich.addEventListener('keydown', (e) => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  const k = e.key.toLowerCase();
+  const m = { b: 'bold', i: 'italic', u: 'underline' }[k];
+  if (m) { e.preventDefault(); document.execCommand(m); updateFmtState(); }
+});
+
 // Zwischen Text und Checkliste wechseln, ohne etwas zu verlieren: Zeilen werden zu Einträgen und zurück
 document.getElementById('ntList').addEventListener('click', () => {
   if (nt.items) {
     nt.text = nt.items.map(s => s.t).filter(Boolean).join('\n');
-    document.getElementById('ntText').value = nt.text;
+    ntRich.innerHTML = textToHtml(nt.text).replace(/^<div><br><\/div>$/, '');
     nt.items = null;
   } else {
-    const lines = document.getElementById('ntText').value.split('\n').map(s => s.trim()).filter(Boolean);
+    const lines = ntRich.innerText.split('\n').map(s => s.trim()).filter(Boolean);
     nt.items = sanitizeSubs(lines.map(t => ({ t, done: false })), 300);
     if (!nt.items.length) nt.items = [{ id: newId(), t: '', done: false }];
     nt.text = '';
@@ -454,23 +509,34 @@ document.getElementById('ntList').addEventListener('click', () => {
 });
 
 function closeNoteSheet() { if (noteSheet.open) noteSheet.close(); }
-document.getElementById('ntCancel').addEventListener('click', closeNoteSheet);
-document.getElementById('ntForm').addEventListener('submit', (e) => {
-  e.preventDefault();
+// Wie in einer Notiz-App: Beim Zurückgehen wird automatisch gespeichert
+function commitNote() {
   const title = document.getElementById('ntTitle').value.trim().slice(0, 80);
-  const text = nt.items ? '' : document.getElementById('ntText').value.slice(0, 10000);
+  const text = nt.items ? '' : ntRich.innerText.replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '').slice(0, 10000);
+  const html = nt.items ? '' : cleanHtml(ntRich.innerHTML);
   const items = nt.items ? nt.items.filter(s => s.t.trim()).map(s => ({ id: s.id, t: s.t.trim(), done: s.done })) : null;
-  if (!title && !text.trim() && !(items && items.length)) { document.getElementById('ntMsg').textContent = 'Schreibe etwas hinein oder gib einen Titel ein.'; return; }
+  if (!title && !text.trim() && !(items && items.length)) return false;
   const now = Date.now();
-  const n = { id: nt.id || newId(), title, text, items, label: nt.secret ? '' : nt.label, pinned: nt.pinned, secret: !!nt.secret, created: nt.created || now, updated: now };
+  const n = { id: nt.id || newId(), title, text, html, items, label: nt.secret ? '' : nt.label, pinned: nt.pinned, secret: !!nt.secret, created: nt.created || now, updated: now };
   const i = planner.notes.findIndex(x => x.id === n.id);
   if (i >= 0) { n.created = planner.notes[i].created; planner.notes[i] = n; } else planner.notes.unshift(n);
   if (n.label && !planner.labels.includes(n.label)) planner.labels.push(n.label);
   if (nt.isNew) habitInput.value = '';
-  savePlanner(); renderPlanner(); closeNoteSheet();
-});
+  savePlanner(); renderPlanner();
+  return true;
+}
+document.getElementById('ntCancel').addEventListener('click', closeNoteSheet);
+document.getElementById('ntForm').addEventListener('submit', (e) => { e.preventDefault(); closeNoteSheet(); });
+noteSheet.addEventListener('close', () => { if (nt && !nt.skipSave) commitNote(); nt = null; });
 document.getElementById('ntDelete').addEventListener('click', function () {
-  if (!twoStep(this, 'Wirklich löschen?')) return;
+  // Zweistufig: erster Tipp zeigt "Löschen?", zweiter löscht
+  if (this.dataset.arm !== '1') {
+    this.dataset.arm = '1'; this.classList.add('confirm'); this.setAttribute('aria-label', 'Wirklich löschen? Nochmal tippen');
+    this._t = setTimeout(() => { this.dataset.arm = ''; this.classList.remove('confirm'); }, 4000);
+    return;
+  }
+  clearTimeout(this._t); this.dataset.arm = ''; this.classList.remove('confirm');
+  nt.skipSave = true;
   planner.notes = planner.notes.filter(x => x.id !== nt.id);
   savePlanner(); renderPlanner(); closeNoteSheet();
 });

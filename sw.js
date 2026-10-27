@@ -4,7 +4,7 @@
 
 // Name des Zwischenspeichers. Bei einer neuen Veröffentlichung die Zahl erhöhen (v3, v4 ...),
 // dann wird beim nächsten Besuch ein neuer Speicher angelegt und der alte gelöscht.
-const CACHE = 'maximize-v30';
+const CACHE = 'maximize-v33';
 
 // Alle Dateien, die die App zum Starten braucht. Kommt eine neue Datei dazu, hier eintragen.
 const APP_FILES = [

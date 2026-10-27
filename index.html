@@ -16,7 +16,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" /></noscript>
 <!-- Aussehen der App -->
-<link rel="stylesheet" href="css/style.css?v=2.4.1" />
+<link rel="stylesheet" href="css/style.css?v=2.6.1" />
 </head>
 <body>
 
@@ -427,41 +427,40 @@
 </dialog>
 
 <!-- Planner: Notiz anlegen oder bearbeiten -->
-<dialog id="noteSheet" aria-labelledby="ntHead">
+<dialog id="noteSheet" class="note-full" aria-labelledby="ntHead">
   <form id="ntForm">
-    <h2 id="ntHead" tabindex="-1" autofocus>Neue Notiz</h2>
-    <div class="field">
-      <label for="ntTitle">Titel</label>
-      <input type="text" id="ntTitle" class="text-input" maxlength="80" autocomplete="off" />
+    <div class="nf-top">
+      <button type="button" class="icon-btn" id="ntCancel" aria-label="Zurück"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h2 id="ntHead" class="nf-head" tabindex="-1">Neue Notiz</h2>
+      <button type="button" class="icon-btn" id="ntPin" aria-pressed="false" aria-label="Anheften" title="Anheften"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6l-1 6 3 3H7l3-3z"/><path d="M12 13v7"/></svg></button>
+      <button type="button" class="icon-btn" id="ntList" aria-pressed="false" aria-label="Checkliste" title="Checkliste"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 6.5l1.5 1.5 2.5-3M3.5 14.5l1.5 1.5 2.5-3M11 7h9.5M11 15h9.5"/></svg></button>
+      <button type="button" class="icon-btn nf-trash" id="ntDelete" aria-label="Notiz löschen" title="Löschen"><span class="nf-trash-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13"/></svg></span></button>
+      <button type="submit" class="icon-btn nf-done" aria-label="Fertig" title="Fertig"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
     </div>
-    <div class="field" id="ntTextField">
-      <label for="ntText">Text</label>
-      <textarea id="ntText" class="text-input" rows="7" maxlength="10000" style="resize:vertical;"></textarea>
+    <input type="text" id="ntTitle" class="nf-title" maxlength="80" placeholder="Titel" autocomplete="off" aria-label="Titel" />
+    <div class="nf-body" id="ntTextField">
+      <div id="ntRich" class="nf-text" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Text" data-ph="Schreib los …"></div>
     </div>
-    <div class="field" id="ntItemsField" hidden>
-      <span class="label">Einträge</span>
+    <div class="nf-body" id="ntItemsField" hidden>
       <div id="ntItems"></div>
       <div class="start-row" style="justify-content:flex-start;">
         <button type="button" class="tool-btn" id="ntAddItem">+ Eintrag</button>
         <button type="button" class="tool-btn" id="ntClearDone">Erledigte entfernen</button>
       </div>
     </div>
-    <div class="field">
-      <div class="chips wrap">
-        <button type="button" class="chip" id="ntList" aria-pressed="false">Checkliste</button>
-        <button type="button" class="chip" id="ntPin" aria-pressed="false">Anheften</button>
+    <div class="nf-bottom">
+      <p class="sheet-msg" id="ntMsg" role="alert"></p>
+      <div class="nf-fmt" id="ntFmt" role="toolbar" aria-label="Formatierung">
+        <button type="button" data-fmt="h" aria-label="Überschrift" title="Überschrift"><b>H</b></button>
+        <button type="button" data-fmt="bold" aria-label="Fett" title="Fett"><b>B</b></button>
+        <button type="button" data-fmt="italic" aria-label="Kursiv" title="Kursiv"><i>I</i></button>
+        <button type="button" data-fmt="underline" aria-label="Unterstrichen" title="Unterstrichen"><u>U</u></button>
+        <button type="button" data-fmt="strikeThrough" aria-label="Durchgestrichen" title="Durchgestrichen"><s>S</s></button>
+        <button type="button" data-fmt="insertUnorderedList" aria-label="Aufzählung" title="Aufzählung"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="7" r="1.2"/><circle cx="5" cy="12" r="1.2"/><circle cx="5" cy="17" r="1.2"/><path d="M10 7h10M10 12h10M10 17h10"/></svg></button>
       </div>
-    </div>
-    <div class="field" id="ntLabelField">
-      <span class="label">Label</span>
-      <div class="chips wrap" id="ntLabels"></div>
-    </div>
-    <p class="sheet-msg" id="ntMsg" role="alert"></p>
-    <div class="sheet-actions">
-      <button type="button" class="btn danger" id="ntDelete">Löschen</button>
-      <span class="spacer"></span>
-      <button type="button" class="btn" id="ntCancel">Abbrechen</button>
-      <button type="submit" class="btn primary">Speichern</button>
+      <div class="nf-labels" id="ntLabelField">
+        <div class="chips nf-lab-row" id="ntLabels"></div>
+      </div>
     </div>
   </form>
 </dialog>
@@ -496,8 +495,8 @@
   <div id="secPin" hidden>
     <form id="secPinForm">
       <p class="hint" style="margin:0 0 12px;">Mit der PIN kommst du in den Geheimbereich, falls das Zeichnen einmal nicht klappt. In den Einstellungen die Zeile mit der Version lange gedrückt halten.</p>
-      <div class="field"><label for="secPin1">PIN (4 bis 8 Ziffern)</label><input type="password" id="secPin1" class="text-input" inputmode="numeric" maxlength="8" autocomplete="off" /></div>
-      <div class="field"><label for="secPin2">PIN wiederholen</label><input type="password" id="secPin2" class="text-input" inputmode="numeric" maxlength="8" autocomplete="off" /></div>
+      <div class="field"><label for="secPin1">PIN (genau 3 Ziffern)</label><input type="password" id="secPin1" class="text-input" inputmode="numeric" maxlength="3" pattern="[0-9]*" autocomplete="off" /></div>
+      <div class="field"><label for="secPin2">PIN wiederholen</label><input type="password" id="secPin2" class="text-input" inputmode="numeric" maxlength="3" pattern="[0-9]*" autocomplete="off" /></div>
       <div class="sheet-actions"><span class="spacer"></span><button type="button" class="btn" id="secCancel2">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
     </form>
   </div>
@@ -694,23 +693,23 @@
 </dialog>
 
 <!-- Die Skripte laufen der Reihe nach. Jedes hat einen Bereich der App, siehe README.md -->
-<script src="js/core.js?v=2.4.1"></script>
-<script src="js/habits.js?v=2.4.1"></script>
-<script src="js/settings.js?v=2.4.1"></script>
-<script src="js/stats.js?v=2.4.1"></script>
-<script src="js/gym-data.js?v=2.4.1"></script>
-<script src="js/gym-records.js?v=2.4.1"></script>
-<script src="js/timepick.js?v=2.4.1"></script>
-<script src="js/sleep-data.js?v=2.4.1"></script>
-<script src="js/gym-view.js?v=2.4.1"></script>
-<script src="js/gym-workout.js?v=2.4.1"></script>
-<script src="js/sleep-view.js?v=2.4.1"></script>
-<script src="js/planner-data.js?v=2.4.1"></script>
-<script src="js/planner-view.js?v=2.4.1"></script>
-<script src="js/secret.js?v=2.4.1"></script>
-<script src="js/backup.js?v=2.4.1"></script>
-<script src="js/nav.js?v=2.4.1"></script>
-<script src="js/main.js?v=2.4.1"></script>
+<script src="js/core.js?v=2.6.1"></script>
+<script src="js/habits.js?v=2.6.1"></script>
+<script src="js/settings.js?v=2.6.1"></script>
+<script src="js/stats.js?v=2.6.1"></script>
+<script src="js/gym-data.js?v=2.6.1"></script>
+<script src="js/gym-records.js?v=2.6.1"></script>
+<script src="js/timepick.js?v=2.6.1"></script>
+<script src="js/sleep-data.js?v=2.6.1"></script>
+<script src="js/gym-view.js?v=2.6.1"></script>
+<script src="js/gym-workout.js?v=2.6.1"></script>
+<script src="js/sleep-view.js?v=2.6.1"></script>
+<script src="js/planner-data.js?v=2.6.1"></script>
+<script src="js/planner-view.js?v=2.6.1"></script>
+<script src="js/secret.js?v=2.6.1"></script>
+<script src="js/backup.js?v=2.6.1"></script>
+<script src="js/nav.js?v=2.6.1"></script>
+<script src="js/main.js?v=2.6.1"></script>
 
 </body>
 </html>
